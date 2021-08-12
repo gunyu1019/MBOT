@@ -131,3 +131,4 @@ dmypy.json
 # config file (!import)
 log/
 config/config.ini
+.idea/
