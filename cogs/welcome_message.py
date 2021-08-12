@@ -17,30 +17,27 @@ You should have received a copy of the GNU General Public License
 along with PUBG BOT.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import pymysql
-import json
+import discord
+import logging
+from discord.ext import commands
 
 from utils.database import GuildSetting
-from config.config import parser
 
-default_prefixes = list(json.loads(parser.get("DEFAULT", "default_prefixes")))
-
-
-def get_prefix(bot, ctx):
-    guild = ctx.guild
-    if guild:
-        guild_st = GuildSetting(bot=bot, guild=guild)
-        if guild_st.check_data():
-            result = guild_st.get_data().get("prefix")
-        else:
-            result = default_prefixes[0]
-        return [result]
-    else:
-        return default_prefixes
+logger = logging.getLogger(__name__)
+DBS = None
 
 
-def set_prefix(bot, guild, prefix):
-    if guild:
-        guild_st = GuildSetting(bot=bot, guild=guild)
-        guild_st.set_data({'prefix': prefix})
-    return
+class SocketReceive(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        guild_st = GuildSetting(bot=self.bot, guild=member.guild)
+        if not guild_st.check_func("welcome_message"):
+            return
+        return
+
+
+def setup(client):
+    client.add_cog(SocketReceive(client))

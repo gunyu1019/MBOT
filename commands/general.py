@@ -63,7 +63,7 @@ class Command:
     @commands.command(aliases=['접두어'], interaction=False, permission=4)
     async def prefix(self, ctx):
         list_message = ctx.options
-        prefix = get_prefix(_=self.client, ctx=ctx)[0]
+        prefix = get_prefix(bot=self.client, ctx=ctx)[0]
 
         def help_message(msg: str = ""):
             return f"{prefix}접두어 <설정|초기화|정보> <접두어(옵션)>: {msg}\n접두어 설정은 \\n,\\t,(공백) 사용금지, 20자 미만으로 설정이 가능합니다."
