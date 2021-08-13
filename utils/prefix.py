@@ -42,5 +42,5 @@ def get_prefix(bot, ctx):
 def set_prefix(bot, guild, prefix):
     if guild:
         guild_st = GuildSetting(bot=bot, guild=guild)
-        guild_st.set_data({'prefix': prefix})
+        guild_st.set_data(prefix=prefix)
     return

@@ -39,3 +39,46 @@ def get_database(database=None):
         except pymysql.err.OperationalError:
             continue
         return connection
+
+
+class DatabaseBase:
+    def __init__(self, guild):
+        self.guild = guild
+
+    def _get_data(self, table: str):
+        connect = get_database()
+        cur = connect.cursor(pymysql.cursors.DictCursor)
+        sql_command = pymysql.escape_string(f"select * from {table} where id=%s")
+        cur.execute(sql_command, self.guild.id)
+        result = cur.fetchone()
+        connect.close()
+        return result
+
+    def _check_data(self, table: str):
+        connect = get_database()
+        cur = connect.cursor(pymysql.cursors.DictCursor)
+        sql_command = pymysql.escape_string(f"select EXISTS (select * from {table} where id=%s) as success")
+        cur.execute(sql_command, self.guild.id)
+        tf = cur.fetchone().get('success', False)
+        connect.close()
+        return bool(tf)
+
+    def _set_data(self, table: str, datas: dict):
+        setup = [name for name in datas.keys()]
+        args = [self.guild.id]
+        for data in datas.keys():
+            args.append(datas.get(data))
+        connect = get_database()
+        cur = connect.cursor(pymysql.cursors.DictCursor)
+        if self._check_data(table=table):
+            _setup = [f"{name}=%s" for name in setup]
+            sql_command = pymysql.escape_string(
+                f"update {table} set {' '.join(_setup)} where id=%s"
+            )
+        else:
+            sql_command = pymysql.escape_string(
+                f"insert into {table}({', '.join(setup)}, id) value (%s{', %s' * len(args)})"
+            )
+        cur.execute(sql_command, tuple(args))
+        connect.commit()
+        connect.close()
