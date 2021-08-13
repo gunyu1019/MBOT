@@ -14,7 +14,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with PUBG BOT.  If not, see <http://www.gnu.org/licenses/>.
+along with PUBG BOT.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import logging
@@ -108,7 +108,7 @@ class SocketReceive(commands.Cog):
         if t == "PRESENCE_UPDATE" or op != 0:
             return
 
-        print(payload)
+        # print(payload)
         logger.debug(payload)
 
         state: ConnectionState = getattr(self.bot, "_connection")
@@ -119,6 +119,8 @@ class SocketReceive(commands.Cog):
             elif data.get("type") == 3:
                 result = ComponentsContext(data, self.bot)
                 state.dispatch('components', result)
+                if result.custom_id == "server-ticket":
+                    state.dispatch('ticket', result)
             return
         elif t == "MESSAGE_CREATE":
             channel, _ = getattr(state, "_get_guild_channel")(data)

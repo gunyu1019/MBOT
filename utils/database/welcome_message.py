@@ -11,7 +11,7 @@ class WelcomeMessage(DatabaseBase):
         super().__init__(guild=guild)
 
     def get_data(self):
-        return self._get_data(table="WelcomeMessage")
+        return self._get_data(table="welcomeMessage")
 
     def check_data(self):
-        return self._check_data(table="WelcomeMessage")
+        return self._check_data(table="welcomeMessage")

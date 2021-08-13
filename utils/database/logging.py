@@ -12,18 +12,14 @@ class GuildSetting(DatabaseBase):
 
     def get_data(self):
         if self.guild:
-            return self._get_data(table="guildSetting")
+            return self._get_data(table="logging")
 
     def check_data(self):
         if self.guild:
-            return self._check_data(table="guildSetting")
+            return self._check_data(table="logging")
         return False
 
     def set_data(self, **kwargs):
         if self.guild:
-            return self._set_data(table="guildSetting", datas=kwargs)
+            return self._set_data(table="logging", datas=kwargs)
         return
-
-    def check_func(self, mode: str):
-        data = self.get_data()
-        return bool(data.get(mode, False))
