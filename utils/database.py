@@ -20,6 +20,7 @@ along with PUBG BOT.  If not, see <http://www.gnu.org/licenses/>.
 import pymysql
 import logging
 from config.config import parser
+from utils import models
 
 log = logging.getLogger(__name__)
 
@@ -41,20 +42,30 @@ def get_database(database=None):
         return connection
 
 
-class DatabaseBase:
-    def __init__(self, guild):
+class Database:
+    def __init__(self, guild, bot):
         self.guild = guild
+        self.bot = bot
 
-    def _get_data(self, table: str):
+    def _get_model(self, data: dict, table: str):
+        if table == "ticket":
+            return models.Ticket(data, self.bot)
+        elif table == "welcomeMessage":
+            return models.WelcomeMessage(data, self.bot)
+        elif table == "guildSetting":
+            return models.GuildSetting(data, self.bot)
+        return data
+
+    def get_data(self, table: str):
         connect = get_database()
         cur = connect.cursor(pymysql.cursors.DictCursor)
         sql_command = pymysql.escape_string(f"select * from {table} where id=%s")
         cur.execute(sql_command, self.guild.id)
         result = cur.fetchone()
         connect.close()
-        return result
+        return self._get_model(result, table)
 
-    def _check_data(self, table: str):
+    def check_data(self, table: str):
         connect = get_database()
         cur = connect.cursor(pymysql.cursors.DictCursor)
         sql_command = pymysql.escape_string(f"select EXISTS (select * from {table} where id=%s) as success")
@@ -63,14 +74,14 @@ class DatabaseBase:
         connect.close()
         return bool(tf)
 
-    def _set_data(self, table: str, datas: dict):
+    def set_data(self, table: str, datas: dict):
         setup = [name for name in datas.keys()]
         args = [self.guild.id]
         for data in datas.keys():
             args.append(datas.get(data))
         connect = get_database()
         cur = connect.cursor(pymysql.cursors.DictCursor)
-        if self._check_data(table=table):
+        if self.check_data(table=table):
             _setup = [f"{name}=%s" for name in setup]
             sql_command = pymysql.escape_string(
                 f"update {table} set {' '.join(_setup)} where id=%s"
@@ -82,3 +93,6 @@ class DatabaseBase:
         cur.execute(sql_command, tuple(args))
         connect.commit()
         connect.close()
+
+    def get_activation(self, name: str):
+        return self.get_data("guildSetting")

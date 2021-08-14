@@ -22,7 +22,7 @@ import logging
 import json
 from discord.ext import commands
 
-from utils.database import GuildSetting, WelcomeMessage
+from utils.database import Database
 
 logger = logging.getLogger(__name__)
 DBS = None
@@ -134,20 +134,16 @@ class SocketReceive(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
-        guild_st = GuildSetting(bot=self.bot, guild=member.guild)
-        if not guild_st.check_func("welcome_message"):
+        database = Database(bot=self.bot, guild=member.guild)
+        if not database.get_activation("welcome_message"):
             return
-        welcome_st = WelcomeMessage(bot=self.bot, guild=member.guild)
-        data = welcome_st.get_data()
+        data = database.get_data("WelcomeMessage")
 
         if data.get("welcome_message") is not None:
             channel_id = data.get("welcome_channel")
             if channel_id is None:
                 return
-            if isinstance(data.get("welcome_message"), str):
-                welcome_msg = json.loads(data.get("welcome_message", '{}'))
-            else:
-                welcome_msg = data.get("welcome_message", {})
+            welcome_msg = data.welcome_message
 
             if welcome_msg == {}:
                 return
@@ -161,11 +157,8 @@ class SocketReceive(commands.Cog):
                 )
             )
 
-        if data.get("welcome_DMmessage") is not None:
-            if isinstance(data.get("welcome_DMmessage"), str):
-                welcome_msg = json.loads(data.get("welcome_DMmessage", '{}'))
-            else:
-                welcome_msg = data.get("welcome_DMmessage", {})
+        if data.welcome_DMmessage is not None:
+            welcome_msg = data.welcome_DMmessage
 
             if welcome_msg == {}:
                 return
@@ -185,24 +178,20 @@ class SocketReceive(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
-        guild_st = GuildSetting(bot=self.bot, guild=member.guild)
-        if not guild_st.check_func("welcome_message"):
+        database = Database(bot=self.bot, guild=member.guild)
+        if not database.get_activation("welcome_message"):
             return
-        welcome_st = WelcomeMessage(bot=self.bot, guild=member.guild)
-        data = welcome_st.get_data()
+        data = database.get_data("welcomeMessage")
 
-        if data.get("leave_message") is not None:
-            channel_id = data.get("welcome_channel")
+        if data.leave_message is not None:
+            channel_id = data.welcome_channel_id
             if channel_id is None:
                 return
-            if isinstance(data.get("leave_message"), str):
-                leave_message = json.loads(data.get("leave_message", '{}'))
-            else:
-                leave_message = data.get("leave_message", {})
+            leave_message = data.leave_message
 
             if leave_message == {}:
                 return
-            channel = member.guild.get_channel(channel_id)
+            channel = data.welcome_channel
             await channel.send(
                 content=self.convert_content(
                     leave_message.get("content"),

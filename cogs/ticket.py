@@ -22,7 +22,7 @@ import logging
 from discord.ext import commands
 
 from module.interaction import ComponentsContext
-from utils.database import GuildSetting, Ticket
+from utils.database import Database
 
 logger = logging.getLogger(__name__)
 DBS = None
@@ -46,11 +46,10 @@ class SocketReceive(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ticket(self, component: ComponentsContext):
-        guild_st = GuildSetting(bot=self.bot, guild=component.guild)
-        if not guild_st.check_func("ticket"):
+        database = Database(bot=self.bot, guild=component.guild)
+        if not database.get_activation("ticket"):
             return
-        ticket_st = Ticket(bot=self.bot, guild=component.guild)
-        data = ticket_st.get_data()
+        data = database.get_data("ticket")
 
         count = None
         if '{count}' in data.template:
@@ -67,7 +66,7 @@ class SocketReceive(commands.Cog):
                     if number not in opened_number:
                         count = number
                         break
-        await data.category.create_text_channel(
+        channel = await data.category.create_text_channel(
             name=self.convert_template(
                 name=data.template,
                 guild=component.guild,
@@ -89,7 +88,7 @@ class SocketReceive(commands.Cog):
                     read_message_history=False,
                     send_messages=False,
                     view_channel=False
-                ),
+                )
             }
         )
         return
