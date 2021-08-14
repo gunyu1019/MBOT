@@ -119,12 +119,15 @@ class SocketReceive(commands.Cog):
             elif data.get("type") == 3:
                 result = ComponentsContext(data, self.bot)
                 state.dispatch('components', result)
-                if result.custom_id == "server-ticket":
+                if result.custom_id == "open_ticket":
                     state.dispatch('ticket', result)
+                if result.custom_id == "close_ticket":
+                    state.dispatch('ticket_close', result)
             return
         elif t == "MESSAGE_CREATE":
             channel, _ = getattr(state, "_get_guild_channel")(data)
             message = Message(state=state, data=data, channel=channel)
+            state.dispatch('interaction_message', message)
             state.dispatch('interaction_command', message)
             return
         return

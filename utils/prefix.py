@@ -20,7 +20,7 @@ along with PUBG BOT.  If not, see <http://www.gnu.org/licenses/>.
 import pymysql
 import json
 
-from utils.database import GuildSetting
+from utils.database import Database
 from config.config import parser
 
 default_prefixes = list(json.loads(parser.get("DEFAULT", "default_prefixes")))
@@ -29,9 +29,9 @@ default_prefixes = list(json.loads(parser.get("DEFAULT", "default_prefixes")))
 def get_prefix(bot, ctx):
     guild = ctx.guild
     if guild:
-        guild_st = GuildSetting(bot=bot, guild=guild)
-        if guild_st.check_data():
-            result = guild_st.get_data().get("prefix")
+        guild_st = Database(bot=bot, guild=guild)
+        if guild_st.check_data("GuildSetting"):
+            result = guild_st.get_data("GuildSetting").prefix
         else:
             result = default_prefixes[0]
         return [result]
@@ -41,6 +41,6 @@ def get_prefix(bot, ctx):
 
 def set_prefix(bot, guild, prefix):
     if guild:
-        guild_st = GuildSetting(bot=bot, guild=guild)
-        guild_st.set_data(prefix=prefix)
+        guild_st = Database(bot=bot, guild=guild)
+        guild_st.set_data(table="Database", datas={"prefix": prefix})
     return

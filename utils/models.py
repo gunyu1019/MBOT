@@ -29,10 +29,10 @@ class Ticket(DatabaseModel):
         self.mode = data.get("ticket_mode")
         self.channel_id = data.get("ticket_channel")
         self.category_id = data.get("ticket_category")
-        self.comment = data.get("ticket_comment")
-        self.message = data.get("ticket_template")
+        self.comment = self.convert_dict(data.get("ticket_comment"))
+        self.message = self.convert_dict(data.get("ticket_template"))
         self.topic = data.get("ticket_topic_template")
-        self.emoji = data.get("ticket_emoji")
+        self.emoji = self.convert_dict(data.get("ticket_emoji"))
         self.logging = bool(data.get("logging_channel"))
         self.logging_channel_id = data.get("ticket_log_id")
 

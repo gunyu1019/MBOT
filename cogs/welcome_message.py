@@ -19,9 +19,9 @@ along with PUBG BOT.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 import logging
-import json
 from discord.ext import commands
 
+from utils.convert import Convert
 from utils.database import Database
 
 logger = logging.getLogger(__name__)
@@ -32,106 +32,6 @@ class SocketReceive(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @staticmethod
-    def convert_content(msg: str, **kwargs):
-        guild: discord.Guild = kwargs.get("guild")
-        member: discord.Member = kwargs.get("member")
-        return msg.format(
-            guild=guild.name,
-            guild_id=guild.id,
-            member=str(member),
-            member_name=member.name,
-            member_tag=member.discriminator,
-            member_id=member.id,
-            member_count=guild.member_count,
-            mention="<@{}>".format(member.id)
-        )
-
-    def convert_embed(self, data: dict, **kwargs):
-        member: discord.Member = kwargs.get("member")
-        guild: discord.Guild = kwargs.get("guild") or member.guild
-        if data == {}:
-            return
-        embed = discord.Embed()
-        if data.get("title") is not None:
-            embed.title = self.convert_content(
-                data.get("title", discord.Embed.Empty),
-                member=member,
-                guild=member.guild
-            )
-        if data.get("description") is not None:
-            embed.description = self.convert_content(
-                data.get("description", discord.Embed.Empty),
-                member=member,
-                guild=member.guild
-            )
-        if data.get("color") is not None:
-            embed.colour = data.get("color", 0)
-        if data.get("fields") is not None:
-            for field in data.get("fields", []):
-                embed.add_field(
-                    name=self.convert_content(
-                        field.get("name", ""),
-                        member=member,
-                        guild=member.guild
-                    ),
-                    value=self.convert_content(
-                        field.get("value", ""),
-                        member=member,
-                        guild=member.guild
-                    ),
-                    inline=field.get("inline", "")
-                )
-        if data.get("thumbnail") is not None:
-            print(kwargs.get("member") is not None and data.get("thumbnail") == "<@AUTHOR_AVATAR>")
-            if kwargs.get("member") is not None and data.get("thumbnail") == "<@AUTHOR_AVATAR>":
-                member: discord.Member = kwargs.get("member")
-                embed.set_thumbnail(url=member.avatar_url_as(format="png", size=1024))
-            elif kwargs.get("guild") is not None and data.get("thumbnail") == "<@GUILD>":
-                icon = guild.icon_url_as(format="png", size=1024)
-                embed.set_thumbnail(url=str(icon))
-            else:
-                embed._thumbnail = {
-                    'url': str(data.get("thumbnail"))
-                }
-        if data.get("footer") is not None:
-            if isinstance(data.get("footer"), str):
-                text = self.convert_content(
-                    data.get("footer"),
-                    member=member,
-                    guild=member.guild
-                )
-                icon_url = discord.Embed.Empty
-            else:
-                footer = data.get("footer", {})
-                text = self.convert_content(
-                    footer.get("text", discord.Embed.Empty),
-                    member=member,
-                    guild=member.guild
-                )
-                icon_url = footer.get("icon_url", discord.Embed.Empty)
-            embed.set_footer(text=text, icon_url=icon_url)
-        if data.get("author") is not None:
-            if isinstance(data.get("author"), str):
-                text = self.convert_content(
-                    data.get("author"),
-                    member=member,
-                    guild=member.guild
-                )
-                url = discord.Embed.Empty
-                icon_url = discord.Embed.Empty
-            else:
-                author = data.get("author", {})
-                text = self.convert_content(
-                    author.get("text", discord.Embed.Empty),
-                    member=member,
-                    guild=member.guild
-                )
-                url = author.get("url", discord.Embed.Empty)
-                icon_url = author.get("icon_url", discord.Embed.Empty)
-            embed.set_author(name=text, icon_url=icon_url, url=url)
-        return embed
-
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
         database = Database(bot=self.bot, guild=member.guild)
@@ -139,21 +39,20 @@ class SocketReceive(commands.Cog):
             return
         data = database.get_data("WelcomeMessage")
 
-        if data.get("welcome_message") is not None:
-            channel_id = data.get("welcome_channel")
+        if data.welcome_message is not None:
+            channel_id = data.welcome_channel_id
             if channel_id is None:
                 return
             welcome_msg = data.welcome_message
 
             if welcome_msg == {}:
                 return
-            channel = member.guild.get_channel(channel_id)
+            convert = Convert(guild=member.guild, member=member)
+            channel = data.welcome_channel
             await channel.send(
                 content=welcome_msg.get("content"),
-                embed=self.convert_embed(
-                    welcome_msg.get("embed", {}),
-                    member=member,
-                    guild=member.guild
+                embed=convert.convert_embed(
+                    welcome_msg.get("embed", {})
                 )
             )
 
@@ -162,16 +61,13 @@ class SocketReceive(commands.Cog):
 
             if welcome_msg == {}:
                 return
+            convert = Convert(guild=member.guild, member=member)
             await member.send(
-                content=self.convert_content(
-                    welcome_msg.get("content"),
-                    member=member,
-                    guild=member.guild
+                content=convert.convert_content(
+                    welcome_msg.get("content")
                 ),
-                embed=self.convert_embed(
-                    welcome_msg.get("embed", {}),
-                    member=member,
-                    guild=member.guild
+                embed=convert.convert_embed(
+                    welcome_msg.get("embed", {})
                 )
             )
         return
@@ -184,24 +80,21 @@ class SocketReceive(commands.Cog):
         data = database.get_data("welcomeMessage")
 
         if data.leave_message is not None:
-            channel_id = data.welcome_channel_id
+            channel_id = data.leave_channel_id
             if channel_id is None:
                 return
             leave_message = data.leave_message
 
             if leave_message == {}:
                 return
-            channel = data.welcome_channel
+            convert = Convert(guild=member.guild, member=member)
+            channel = data.leave_channel
             await channel.send(
-                content=self.convert_content(
-                    leave_message.get("content"),
-                    member=member,
-                    guild=member.guild
+                content=convert.convert_content(
+                    leave_message.get("content")
                 ),
-                embed=self.convert_embed(
-                    leave_message.get("embed", {}),
-                    member=member,
-                    guild=member.guild
+                embed=convert.convert_embed(
+                    leave_message.get("embed", {})
                 )
             )
         return
