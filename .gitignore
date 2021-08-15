@@ -132,3 +132,5 @@ dmypy.json
 log/
 config/config.ini
 .idea/
+data/ticket.json
+data/ticket/

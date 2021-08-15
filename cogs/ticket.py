@@ -17,9 +17,9 @@ You should have received a copy of the GNU General Public License
 along with PUBG BOT.  If not, see <https://www.gnu.org/licenses/>.
 """
 import json
+import logging
 
 import discord
-import logging
 from discord.ext import commands
 
 from module.interaction import ComponentsContext
@@ -27,6 +27,7 @@ from module.message import Message
 from utils.convert import Convert
 from utils.database import Database
 from utils.directory import directory
+from utils.models import Ticket
 
 logger = logging.getLogger(__name__)
 DBS = None
@@ -35,8 +36,8 @@ DBS = None
 class SocketReceive(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        with open(f"{directory}/data/ticket_dm.json", "r", encoding='utf-8') as file:
-            self.ticket_dm = json.load(fp=file)
+        with open(f"{directory}/data/ticket.json", "r", encoding='utf-8') as file:
+            self.ticket = json.load(fp=file)
 
     @staticmethod
     def convert_template(name: str, guild: discord.Guild, member: discord.Member, **kwargs):
@@ -47,7 +48,7 @@ class SocketReceive(commands.Cog):
             member_name=member.name,
             member_tag=member.discriminator,
             member_id=member.id,
-            count=kwargs.get("count")
+            number=kwargs.get("count")
         )
 
     @commands.Cog.listener()
@@ -56,10 +57,13 @@ class SocketReceive(commands.Cog):
         if not database.get_activation("ticket"):
             return
         data = database.get_data("ticket")
+        if component.author.id in self.ticket:
+            await component.send(content="이미 티켓이 열려 있습니다!", hidden=True)
+            return
 
         count = None
-        if '{count}' in data.template:
-            cut_names = data.template.split("{count}")
+        if '{number}' in data.template:
+            cut_names = data.template.split("{number}")
             opened_number = []
             if len(cut_names) > 1:
                 front_name = cut_names[0]
@@ -80,10 +84,8 @@ class SocketReceive(commands.Cog):
                     member=component.author,
                     count=count
                 ),
-                category=data.category,
                 overwrites={
                     component.author: discord.PermissionOverwrite(
-                        read_message=True,
                         read_message_history=True,
                         send_messages=True,
                         embed_links=True,
@@ -91,7 +93,6 @@ class SocketReceive(commands.Cog):
                         view_channel=True
                     ),
                     component.guild.default_role: discord.PermissionOverwrite(
-                        read_message=False,
                         read_message_history=False,
                         send_messages=False,
                         view_channel=False
@@ -107,10 +108,8 @@ class SocketReceive(commands.Cog):
                     member=component.author,
                     count=count
                 ),
-                category=data.category,
                 overwrites={
                     component.guild.default_role: discord.PermissionOverwrite(
-                        read_message=False,
                         read_message_history=False,
                         send_messages=False,
                         view_channel=False
@@ -119,6 +118,7 @@ class SocketReceive(commands.Cog):
             )
 
         convert = Convert(guild=component.guild, member=component.author)
+        self.ticket[component.author.id] = (channel.id, data.data)
         if data.comment is not None and data.comment != {}:
             if data.mode == 1:
                 await component.author.send(
@@ -129,9 +129,6 @@ class SocketReceive(commands.Cog):
                         data.comment.get("embed", {})
                     )
                 )
-                self.ticket_dm[component.author.id] = (component.guild_id, channel.id)
-                with open(f"{directory}/data/ticket_dm.json", "w", encoding='utf-8') as file:
-                    json.dump(self.ticket_dm, fp=file, indent=4)
             else:
                 await channel.send(
                     content=convert.convert_content(
@@ -141,31 +138,47 @@ class SocketReceive(commands.Cog):
                         data.comment.get("embed", {})
                     )
                 )
+        await component.send(content="티켓이 열렸습니다.", hidden=True)
+        with open(f"{directory}/data/ticket.json", "w", encoding='utf-8') as file:
+            json.dump(self.ticket, fp=file, indent=4)
 
     @commands.Cog.listener()
     async def on_interaction_message(self, message: Message):
-        if message.author.id not in self.ticket_dm:
+        if message.author.id not in self.ticket or message.channel.type != discord.DMChannel:
             return
-        guild_id, channel_id = self.ticket_dm.get(message.author.id)
-        guild: discord.Guild = self.bot.get_guild(guild_id)
-        channel = guild.get_channel(channel_id)
+        channel_id, _data = self.ticket.get(message.author.id)
+        data = Ticket(data=_data, bot=self.bot)
+        if data.mode != 1:
+            return
+        channel = data.guild.get_channel(channel_id)
         files = []
         if len(message.attachments) != 0:
             for attachment in message.attachments:
                 file = await attachment.to_file()
                 files.append(file)
-        msg = await channel.send(content=message.content, files=files)
+        await channel.send(
+            content="**{author}**: {message}".format(author=message.author, message=message.content),
+            files=files
+        )
+        await message.add_reaction("\U00002705")
         return
 
     @commands.Cog.listener()
-    async def on_ticket_close(self, component: ComponentsContext):
-        database = Database(bot=self.bot, guild=component.guild)
+    async def on_ticket_close(self, data: ComponentsContext):
+        database = Database(bot=self.bot, guild=data.guild)
         data = database.get_data("ticket")
-        if data.mode == 1:
+        author_id = None
+        for ticket in self.ticket.keys():
+            if data.channel in self.ticket[ticket]:
+                author_id = ticket
+                break
+        if author_id is None:
             return
-        else:
-            component.channel.set_permission(
-                component.author, # Wrong // It's opend user
+        author = data.guild.get_member(author_id)
+
+        if data.mode == 0:
+            data.channel.set_permission(
+                author,
                 overwrite=discord.PermissionOverwrite(
                     read_message=False,
                     read_message_history=False,
@@ -173,6 +186,31 @@ class SocketReceive(commands.Cog):
                     view_channel=False
                 )
             )
+        if data.logging and data.logging_channel_id is not None:
+            logging_data = "{guild}\n".format(guild=data.guild.name)
+            async for message in data.channel.history(oldest_first=True):
+                content = message.content
+                if message.author == self.bot.user and data.mode == 1:
+                    content = content.lstrip("**{author}**: ".format(author=author))
+
+                logging_data += "[{datetime}|{author}]: {content}".format(
+                    datetime=message.created_at.strftime("%Y-%m-%d %p %I:%M:%S"),
+                    author=message.author, content=content
+                )
+
+            logging_channel = data.logging_channel
+            with open(f"{directory}/data/ticket/{data.channel_id}.txt", "w", encoding='utf-8') as file:
+                file.write(logging_data)
+            d_file = discord.File(f"{directory}/data/ticket/{data.channel_id}.txt")
+            embed = discord.Embed(title="Ticket Logging", colour=0x0080ff)
+            embed.add_field(name="Opener", value=author, inline=True)
+            embed.add_field(name="Closer", value=data.author, inline=True)
+            await logging_channel.send(embed=embed, files=d_file)
+        await data.channel.delete()
+        self.ticket.pop(author_id)
+        with open(f"{directory}/data/ticket.json", "w", encoding='utf-8') as file:
+            json.dump(self.ticket, fp=file, indent=4)
+        return
 
 
 def setup(client):

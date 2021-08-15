@@ -30,8 +30,8 @@ def get_prefix(bot, ctx):
     guild = ctx.guild
     if guild:
         guild_st = Database(bot=bot, guild=guild)
-        if guild_st.check_data("GuildSetting"):
-            result = guild_st.get_data("GuildSetting").prefix
+        if guild_st.check_data("guildSetting"):
+            result = guild_st.get_data("guildSetting").prefix
         else:
             result = default_prefixes[0]
         return [result]

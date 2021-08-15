@@ -1,6 +1,8 @@
 import discord
 import typing
 
+from module.components import Button
+
 
 class Convert:
     def __init__(self, guild: discord.Guild = None, member: discord.Member = None):
@@ -91,3 +93,23 @@ class Convert:
                 icon_url = author.get("icon_url", discord.Embed.Empty)
             embed.set_author(name=text, icon_url=icon_url, url=url)
         return embed
+
+    @staticmethod
+    def convert_button(custom_id: str, data: dict, emoji: typing.Union[discord.PartialEmoji, dict]) -> Button:
+        if isinstance(emoji, dict):
+            emoji = discord.PartialEmoji(
+                name=emoji.get("name"),
+                id=emoji.get("id")
+            )
+        print(Button(
+            custom_id=custom_id,
+            label=data.get("label"),
+            style=data.get("style"),
+            emoji=emoji
+        ).to_dict())
+        return Button(
+            custom_id=custom_id,
+            label=data.get("label"),
+            style=data.get("style"),
+            emoji=emoji
+        )

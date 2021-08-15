@@ -95,4 +95,6 @@ class Database:
         connect.close()
 
     def get_activation(self, name: str):
-        return self.get_data("guildSetting")
+        return bool(
+            getattr(self.get_data("guildSetting"), name, 0)
+        )
