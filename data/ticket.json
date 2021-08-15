@@ -1,1 +1,34 @@
-{}
+{
+    "340373909339635725": [
+        876517019963510844,
+        {
+            "id": 844613188900356157,
+            "ticket_name": "Ticket-{number}",
+            "ticket_mode": 1,
+            "ticket_category": 844613191095025665,
+            "ticket_channel": 844622187809341450,
+            "ticket_comment": "{}",
+            "ticket_template": "{\"content\": \"\ubb38\uc758\ub97c \ud558\uace0\uc790 \ud558\uc2e0 \ub2e4\uba74 \uc544\ub798\uc758 \ubc84\ud2bc\uc744 \ub20c\ub7ec\uc8fc\uc138\uc694.\"}",
+            "ticket_topic_template": "",
+            "ticket_emoji": "{}",
+            "logging": 0,
+            "logging_channel": -1
+        }
+    ],
+    "340373909339635725": [
+        876517971479101510,
+        {
+            "id": 844613188900356157,
+            "ticket_name": "Ticket-{number}",
+            "ticket_mode": 1,
+            "ticket_category": 844613191095025665,
+            "ticket_channel": 844622187809341450,
+            "ticket_comment": "{}",
+            "ticket_template": "{\"content\": \"\ubb38\uc758\ub97c \ud558\uace0\uc790 \ud558\uc2e0 \ub2e4\uba74 \uc544\ub798\uc758 \ubc84\ud2bc\uc744 \ub20c\ub7ec\uc8fc\uc138\uc694.\"}",
+            "ticket_topic_template": "",
+            "ticket_emoji": "{}",
+            "logging": 0,
+            "logging_channel": -1
+        }
+    ]
+}

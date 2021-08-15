@@ -21,8 +21,9 @@ import logging
 
 import discord
 from discord.ext import commands
+from typing import Union
 
-from module.interaction import ComponentsContext
+from module.interaction import ComponentsContext, InteractionContext
 from module.message import Message
 from utils.convert import Convert
 from utils.database import Database
@@ -164,7 +165,7 @@ class SocketReceive(commands.Cog):
         return
 
     @commands.Cog.listener()
-    async def on_ticket_close(self, data: ComponentsContext):
+    async def on_ticket_close(self, data: Union[Message, InteractionContext, ComponentsContext]):
         database = Database(bot=self.bot, guild=data.guild)
         data = database.get_data("ticket")
         author_id = None

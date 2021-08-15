@@ -18,11 +18,13 @@ along with PUBG BOT.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import discord
+from typing import Union
 
 from config.config import parser
 from module import commands as _command
+from module.interaction import SlashContext
 from module.components import ActionRow
-from module.message import Channel
+from module.message import Channel, Message
 from utils.convert import Convert
 from utils.database import Database
 
@@ -33,37 +35,46 @@ class Command:
         self.color = int(parser.get("DEFAULT", "color"), 16)
 
     @_command.command(name="티켓", permission=1, interaction=False)
-    async def ticket(self, ctx):
+    async def ticket(self, ctx: Union[SlashContext, Message]):
         database = Database(bot=self.bot, guild=ctx.guild)
         if not database.get_activation("ticket"):
             return
         data = database.get_data("ticket")
-        if data.channel_id is None or data.message is None:
-            return
-        convert = Convert(guild=ctx.guild)
-        channel = Channel(state=getattr(self.bot, "_connection"), channel=data.channel)
-        msg = await channel.send(
-            content=convert.convert_content(
-                data.message.get("content")
-            ),
-            embed=convert.convert_embed(
-                data.message.get("embed", {})
-            ),
-            components=[ActionRow(
-                components=[
-                    convert.convert_button(
-                        custom_id="open_ticket",
-                        data=data.message.get("button", {
-                            "label": "티켓 열림",
-                            "style": 1
-                        }),
-                        emoji=data.emoji if data.emoji is not None and data.emoji != {} else {
-                            "name": "\U0001F39F"
-                        }
-                    )
-                ]
-            )]
-        )
+        option1 = None
+        print(ctx.options)
+        if isinstance(ctx, SlashContext):
+            option1 = ctx.options.get("종류")
+        elif isinstance(ctx, Message) and len(ctx.options) > 0:
+            option1 = ctx.options[0]
+        if option1 == "불러오기":
+            if data.channel_id is None or data.message is None:
+                return
+            convert = Convert(guild=ctx.guild)
+            channel = Channel(state=getattr(self.bot, "_connection"), channel=data.channel)
+            msg = await channel.send(
+                content=convert.convert_content(
+                    data.message.get("content")
+                ),
+                embed=convert.convert_embed(
+                    data.message.get("embed", {})
+                ),
+                components=[ActionRow(
+                    components=[
+                        convert.convert_button(
+                            custom_id="open_ticket",
+                            data=data.message.get("button", {
+                                "label": "티켓 열림",
+                                "style": 1
+                            }),
+                            emoji=data.emoji if data.emoji is not None and data.emoji != {} else {
+                                "name": "\U0001F39F"
+                            }
+                        )
+                    ]
+                )]
+            )
+        elif option1 == "닫기":
+            self.bot.dispatch("ticket_close", ctx)
         return
 
 
