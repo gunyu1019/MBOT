@@ -1,7 +1,14 @@
-# Metarix
+<p align="center">
+    <img src="https://user-images.githubusercontent.com/16767890/130764254-cb2d7a62-a19d-4c10-92a0-9b897910a7fc.png" width="15%" alt="Metarix BOT"/>
+</p>
+<h1 align="center">METARIX</h1>
+<p align="center">
+   <b>Project MBOT v2</b>
+</p>
 2020년 계획된 MBOT 프로젝트를 재구성한 프로젝트입니다.
 
 ### 단계별 개발 현황
+
 MBOT의 기능이 생각보다 다양하게 구성된 관게로 아래에 작업 현황이 기재되어 있습니다.
 
 #### Project MBOT
