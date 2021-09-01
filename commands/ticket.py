@@ -24,7 +24,7 @@ from config.config import parser
 from module import commands as _command
 from module.interaction import SlashContext
 from module.components import ActionRow
-from module.message import Channel, Message
+from module.message import MessageSendable, Message
 from utils.convert import Convert
 from utils.database import Database
 
@@ -46,11 +46,12 @@ class Command:
             option1 = ctx.options.get("종류")
         elif isinstance(ctx, Message) and len(ctx.options) > 0:
             option1 = ctx.options[0]
+
         if option1 == "불러오기":
             if data.channel_id is None or data.message is None:
                 return
             convert = Convert(guild=ctx.guild)
-            channel = Channel(state=getattr(self.bot, "_connection"), channel=data.channel)
+            channel = MessageSendable(state=getattr(self.bot, "_connection"), channel=data.channel)
             msg = await channel.send(
                 content=convert.convert_content(
                     data.message.get("content")

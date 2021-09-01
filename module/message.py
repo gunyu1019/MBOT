@@ -129,7 +129,7 @@ class Message(discord.Message):
             allowed_mentions: discord.AllowedMentions = None,
             components: List[Union[ActionRow, Button, Selection]] = None
     ):
-        channel = Channel(state=self._state, channel=self.channel)
+        channel = MessageSendable(state=self._state, channel=self.channel)
         await channel.send(
             content=content,
             tts=tts,
@@ -193,8 +193,8 @@ class Message(discord.Message):
         return
 
 
-class Channel:
-    def __init__(self, state: ConnectionState, channel: Union[discord.TextChannel, discord.DMChannel]):
+class MessageSendable:
+    def __init__(self, state: ConnectionState, channel):
         self._state = state
         self.http = HttpClient(http=self._state.http)
         self.channel = channel

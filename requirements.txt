@@ -1,0 +1,3 @@
+discord.py==1.7.3
+DBSkr==2.0
+asyncio~=3.4.3

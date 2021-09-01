@@ -100,3 +100,14 @@ class HttpClient:
         if files is not None or form is not None:
             return await self.http.request(r, form=form, files=files)
         return await self.http.request(r, json=payload)
+
+    async def create_thread_with_message(self, channel_id, message_id, payload: dict):
+        r = SlashRoute(
+            'POST', '/channels/{channel_id}/messages/{message_id}/threads',
+            channel_id=channel_id, message_id=message_id
+        )
+        return await self.http.request(r, json=payload)
+
+    async def create_thread_without_message(self, channel_id, payload: dict):
+        r = SlashRoute('POST', '/channels/{channel_id}/threads', channel_id=channel_id)
+        return await self.http.request(r, json=payload)

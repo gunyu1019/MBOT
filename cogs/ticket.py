@@ -77,6 +77,7 @@ class SocketReceive(commands.Cog):
                     if number not in opened_number:
                         count = number
                         break
+
         if data.mode == 0:
             channel = await data.category.create_text_channel(
                 name=self.convert_template(
@@ -117,6 +118,8 @@ class SocketReceive(commands.Cog):
                     )
                 }
             )
+        elif data.mode == 2:
+            return
 
         convert = Convert(guild=component.guild, member=component.author)
         self.ticket[component.author.id] = (channel.id, data.data)
