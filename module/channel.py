@@ -1,11 +1,11 @@
 import discord
-from discord.enums import try_enum, Enum
 from discord.state import ConnectionState
+from enum import Enum
 from typing import Optional
 
-from http import HttpClient
-from errors import InvalidArgument
-from message import Message, MessageSendable
+from module.http import HttpClient
+from module.errors import InvalidArgument
+from module.message import Message, MessageSendable
 
 
 class ThreadType(Enum):
@@ -64,13 +64,14 @@ class TextChannel(MessageSendable):
             channel = await self.http.create_thread_without_message(
                 channel_id=self.channel.id, payload=payload
             )
-        return Threads(guild=self.guild, state=self._state, data=channel)
+        return Thread(guild=self.guild, state=self._state, data=channel)
 
 
-class Threads(MessageSendable):
+class Thread(MessageSendable):
     def __init__(self, guild: discord.Guild, state: ConnectionState, data: dict):
         self.guild = guild
         self._state = state
+        self.http = HttpClient(http=self._state.http)
         self._from_dict(data)
         super().__init__(state=self._state, channel=self)
 
@@ -78,7 +79,7 @@ class Threads(MessageSendable):
         self.id = int(data['id'])
         self.parent_id = int(data['parent_id'])
         self.owner_id = int(data['owner_id'])
-        self.type = try_enum(ChannelType, data['type'])
+        self.type = get_enum(ChannelType, data['type'])
 
         self.last_message_id = getattr(discord.utils, "_get_as_snowflake")(data, 'last_message_id')
         self.slowmode_delay = data.get('rate_limit_per_user', 0)
@@ -121,3 +122,58 @@ class Threads(MessageSendable):
     def category_id(self) -> Optional[int]:
         parent = self.parent
         return parent.category_id
+
+    async def edit(
+            self,
+            *,
+            name: str = None,
+            archived: bool = None,
+            locked: bool = None,
+            invitable: bool = None,
+            slowmode_delay: int = None,
+            auto_archive_duration: int = None,
+    ):
+        payload = {}
+
+        if name is not None:
+            payload['name'] = name
+        if archived is not None:
+            payload['archived'] = archived
+        if locked is not None:
+            payload['locked'] = locked
+        if invitable is not None:
+            payload['invitable'] = invitable
+        if slowmode_delay is not None:
+            payload['rate_limit_per_user'] = slowmode_delay
+        if auto_archive_duration is not None:
+            payload['auto_archive_duration'] = auto_archive_duration
+
+        data = await self.http.edit_channel(self.id, **payload)
+        return Thread(data=data, state=self._state, guild=self.guild)
+
+    async def delete(self):
+        await self.http.delete_channel(channel_id=self.id)
+        return
+
+    async def join(self):
+        await self.http.join_thread(channel_id=self.id)
+        return
+
+    async def leave(self):
+        await self.http.leave_thread(channel_id=self.id)
+        return
+
+    async def add_user(self, member: discord.Member):
+        await self.http.add_user_to_thread(channel_id=self.id, user_id=member.id)
+        return
+
+    async def remove_user(self, member: discord.Member):
+        await self.http.remove_user_from_thread(channel_id=self.id, user_id=member.id)
+        return
+
+
+def get_enum(cls, val):
+    enum_val = [i for i in cls if i.value == val]
+    if len(enum_val) == 0:
+        return val
+    return enum_val[0]

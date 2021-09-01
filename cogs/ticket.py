@@ -24,6 +24,7 @@ from discord.ext import commands
 from typing import Union
 
 from module.interaction import ComponentsContext, InteractionContext
+from module.channel import TextChannel, ThreadType
 from module.message import Message
 from utils.convert import Convert
 from utils.database import Database
@@ -119,13 +120,33 @@ class SocketReceive(commands.Cog):
                 }
             )
         elif data.mode == 2:
-            return
+            message_channel = TextChannel(channel=data.channel, state=getattr(self.bot, "_connection"))
+            channel = await message_channel.create_thread(
+                name=self.convert_template(
+                    name=data.template,
+                    guild=component.guild,
+                    member=component.author,
+                    count=count
+                ),
+                type=ThreadType.PRIVATE
+            )
+        elif data.mode == 3:
+            message_channel = TextChannel(channel=data.channel, state=getattr(self.bot, "_connection"))
+            channel = await message_channel.create_thread(
+                name=self.convert_template(
+                    name=data.template,
+                    guild=component.guild,
+                    member=component.author,
+                    count=count
+                ),
+                type=ThreadType.PUBLIC
+            )
 
         convert = Convert(guild=component.guild, member=component.author)
         self.ticket[component.author.id] = (channel.id, data.data)
         if data.comment is not None and data.comment != {}:
-            if data.mode == 1:
-                await component.author.send(
+            if data.mode == 0 or data.mode == 2 or data.mode == 3:
+                await channel.send(
                     content=convert.convert_content(
                         data.comment.get("content")
                     ),
@@ -133,8 +154,8 @@ class SocketReceive(commands.Cog):
                         data.comment.get("embed", {})
                     )
                 )
-            else:
-                await channel.send(
+            elif data.mode == 1:
+                await component.author.send(
                     content=convert.convert_content(
                         data.comment.get("content")
                     ),

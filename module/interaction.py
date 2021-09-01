@@ -67,8 +67,8 @@ class InteractionContext:
         self.deferred = False
         self.responded = False
 
-        data = InteractionData(interaction_token=self.token, interaction_id=self.id, application_id=self.application)
-        self.http = HttpClient(http=self.client.http, data=data)
+        self._interaction_data = InteractionData(interaction_token=self.token, interaction_id=self.id, application_id=self.application)
+        self.http = HttpClient(http=self.client.http)
 
     @property
     def prefix(self):
@@ -104,7 +104,7 @@ class InteractionContext:
         if hidden:
             base["data"] = {"flags": 64}
 
-        await self.http.post_defer_response(payload=base)
+        await self.http.post_defer_response(payload=base, interaction=self._interaction_data)
         self.deferred = True
         return
 
@@ -156,13 +156,17 @@ class InteractionContext:
                 await self.defer(hidden=hidden)
 
             if self.deferred:
-                resp = await self.http.edit_initial_response(payload=payload, form=form, files=files)
+                resp = await self.http.edit_initial_response(
+                    payload=payload, form=form, files=files, interaction=self._interaction_data
+                )
             else:
-                await self.http.post_initial_response(payload=payload)
+                await self.http.post_initial_response(payload=payload, interaction=self._interaction_data)
                 resp = await self.http.get_initial_response()
             self.responded = True
         else:
-            resp = await self.http.post_followup(payload=payload, form=form, files=files)
+            resp = await self.http.post_followup(
+                payload=payload, form=form, files=files, interaction=self._interaction_data
+            )
         ret = Message(state=self._state, channel=self.channel, data=resp)
 
         if files:
@@ -212,9 +216,13 @@ class InteractionContext:
             form = None
 
         if message_id == "@original":
-            resp = await self.http.edit_initial_response(payload=payload, form=form, files=files)
+            resp = await self.http.edit_initial_response(
+                payload=payload, form=form, files=files
+            )
         else:
-            resp = await self.http.edit_followup(message_id, payload=payload, form=form, files=files)
+            resp = await self.http.edit_followup(
+                message_id, payload=payload, form=form, files=files, interaction=self._interaction_data
+            )
         ret = Message(state=self._state, channel=self.channel, data=resp)
 
         if files:
@@ -224,9 +232,9 @@ class InteractionContext:
 
     async def delete(self, message_id="@original"):
         if message_id == "@original":
-            await self.http.delete_initial_response()
+            await self.http.delete_initial_response(interaction=self._interaction_data)
         else:
-            await self.http.delete_followup(message_id)
+            await self.http.delete_followup(message_id, interaction=self._interaction_data)
         return
 
 
@@ -288,7 +296,7 @@ class ComponentsContext(InteractionContext):
         if hidden:
             base["data"] = {"flags": 64}
 
-        await self.http.post_defer_response(payload=base)
+        await self.http.post_defer_response(payload=base, interaction=self._interaction_data)
         self.deferred = True
         return
 
@@ -340,13 +348,13 @@ class ComponentsContext(InteractionContext):
             if self.deferred:
                 await self.http.edit_message(
                     channel_id=self.channel.id, message_id=self.message.id,
-                    payload=payload, form=form, files=files
+                    payload=payload, form=form, files=files, interaction=self._interaction_data
                 )
             else:
-                await self.http.post_initial_components_response(payload=payload)
+                await self.http.post_initial_components_response(payload=payload, interaction=self._interaction_data)
             self.responded = True
         else:
-            await self.http.post_followup(payload=payload, form=form, files=files)
+            await self.http.post_followup(payload=payload, form=form, files=files, interaction=self._interaction_data)
 
         if files:
             for i in files:
