@@ -24,8 +24,7 @@ from discord.ext import commands
 from typing import Union
 
 from module.interaction import ComponentsContext, InteractionContext
-from module.channel import TextChannel, ThreadType
-from module.message import Message
+from module.message import Message, MessageSendable
 from utils.convert import Convert
 from utils.database import Database
 from utils.directory import directory
@@ -120,33 +119,32 @@ class TicketReceive(commands.Cog):
                 }
             )
         elif data.mode == 2:
-            message_channel = TextChannel(channel=data.channel, state=getattr(self.bot, "_connection"))
-            channel = await message_channel.create_thread(
+            channel = await data.channel.create_thread(
                 name=self.convert_template(
                     name=data.template,
                     guild=component.guild,
                     member=component.author,
                     count=count
                 ),
-                type=ThreadType.PRIVATE
+                type=discord.ChannelType.private_thread
             )
         elif data.mode == 3:
-            message_channel = TextChannel(channel=data.channel, state=getattr(self.bot, "_connection"))
-            channel = await message_channel.create_thread(
+            channel = await data.channel.create_thread(
                 name=self.convert_template(
                     name=data.template,
                     guild=component.guild,
                     member=component.author,
                     count=count
                 ),
-                type=ThreadType.PUBLIC
+                type=discord.ChannelType.public_thread
             )
 
         convert = Convert(guild=component.guild, member=component.author)
         self.ticket[component.author.id] = (channel.id, data.data)
         if data.comment is not None and data.comment != {}:
             if data.mode == 0 or data.mode == 2 or data.mode == 3:
-                await channel.send(
+                _channel = MessageSendable(state=getattr(self.bot, "_connection"), channel=data.channel)
+                await _channel.send(
                     content=convert.convert_content(
                         data.comment.get("content")
                     ),
