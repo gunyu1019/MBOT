@@ -19,4 +19,4 @@ along with PUBG BOT.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 
-directory = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/").replace("/utils", "")
+directory = os.path.dirname(os.path.abspath(__file__)).rstrip("utils")

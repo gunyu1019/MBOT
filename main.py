@@ -52,6 +52,4 @@ if __name__ == "__main__":
     for cog in cogs:
         bot.load_extension(cog)
 
-    # Override for v9
-    # bot.launch_shards = launch_shards
     bot.run(token)

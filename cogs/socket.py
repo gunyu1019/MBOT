@@ -45,7 +45,9 @@ class SocketReceive(commands.Cog):
         self.bot = bot
 
         self.func: List[Dict[str, Command]] = []
-        cogs = ["commands." + file[:-3] for file in os.listdir(f"{directory}/commands") if file.endswith(".py")]
+        cogs = [
+            "commands." + file[:-3] for file in os.listdir(os.path.join(directory, "commands")) if file.endswith(".py")
+        ]
         for cog in cogs:
             module = importlib.import_module(cog)
             _class = module.setup(self.bot)

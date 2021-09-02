@@ -18,6 +18,7 @@ along with PUBG BOT.  If not, see <https://www.gnu.org/licenses/>.
 """
 import json
 import logging
+import os
 
 import discord
 from discord.ext import commands
@@ -37,7 +38,7 @@ DBS = None
 class TicketReceive(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        with open(f"{directory}/data/ticket.json", "r", encoding='utf-8') as file:
+        with open(os.path.join(directory, "data", "ticket.json"), "r", encoding='utf-8') as file:
             self.ticket = json.load(fp=file)
 
     @staticmethod
@@ -138,6 +139,9 @@ class TicketReceive(commands.Cog):
                 ),
                 type=discord.ChannelType.public_thread
             )
+        else:
+            # Not Worked
+            return
 
         convert = Convert(guild=component.guild, member=component.author)
         self.ticket[component.author.id] = (channel.id, data.data)
@@ -162,7 +166,7 @@ class TicketReceive(commands.Cog):
                     )
                 )
         await component.send(content="티켓이 열렸습니다.", hidden=True)
-        with open(f"{directory}/data/ticket.json", "w", encoding='utf-8') as file:
+        with open(os.path.join(directory, "data", "ticket.json"), "w", encoding='utf-8') as file:
             json.dump(self.ticket, fp=file, indent=4)
 
     @commands.Cog.listener()
@@ -222,16 +226,19 @@ class TicketReceive(commands.Cog):
                 )
 
             logging_channel = data.logging_channel
-            with open(f"{directory}/data/ticket/{data.channel_id}.txt", "w", encoding='utf-8') as file:
+            with open(
+                    os.path.join(directory, "data", "ticket", "{0}.txt".format(data.channel.id)),
+                    "w", encoding='utf-8'
+            ) as file:
                 file.write(logging_data)
-            d_file = discord.File(f"{directory}/data/ticket/{data.channel_id}.txt")
+            d_file = discord.File(os.path.join(directory, "data", "ticket", "{0}.txt".format(data.channel.id)))
             embed = discord.Embed(title="Ticket Logging", colour=0x0080ff)
             embed.add_field(name="Opener", value=author, inline=True)
             embed.add_field(name="Closer", value=data.author, inline=True)
             await logging_channel.send(embed=embed, files=d_file)
         await data.channel.delete()
         self.ticket.pop(author_id)
-        with open(f"{directory}/data/ticket.json", "w", encoding='utf-8') as file:
+        with open(os.path.join(directory, "data", "ticket.json"), "w", encoding='utf-8') as file:
             json.dump(self.ticket, fp=file, indent=4)
         return
 
