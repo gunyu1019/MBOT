@@ -130,7 +130,7 @@ class Message(discord.Message):
             components: List[Union[ActionRow, Button, Selection]] = None
     ):
         channel = MessageSendable(state=self._state, channel=self.channel)
-        await channel.send(
+        return await channel.send(
             content=content,
             tts=tts,
             embed=embed,

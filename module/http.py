@@ -147,3 +147,26 @@ class HttpClient:
             channel_id=channel_id, user_id=user_id
         )
         return await self.http.request(r)
+
+    async def get_gateway(self, *, encoding='json', v=6, zlib=True):
+        try:
+            data = await self.http.request(SlashRoute('GET', '/gateway'))
+        except discord.HTTPException as exc:
+            raise discord.GatewayNotFound() from exc
+        if zlib:
+            value = '{0}?encoding={1}&v={2}&compress=zlib-stream'
+        else:
+            value = '{0}?encoding={1}&v={2}'
+        return value.format(data['url'], encoding, v)
+
+    async def get_bot_gateway(self, *, encoding='json', v=6, zlib=True):
+        try:
+            data = await self.http.request(SlashRoute('GET', '/gateway/bot'))
+        except discord.HTTPException as exc:
+            raise discord.GatewayNotFound() from exc
+
+        if zlib:
+            value = '{0}?encoding={1}&v={2}&compress=zlib-stream'
+        else:
+            value = '{0}?encoding={1}&v={2}'
+        return data['shards'], value.format(data['url'], encoding, v)

@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with PUBG BOT.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import discord
 import logging
 import inspect
 import importlib
@@ -94,13 +95,22 @@ class SocketReceive(commands.Cog):
                     else:
                         _state.dispatch("command_complete", ctx)
                 else:
-                    # On PUBG BOT, It won't make.
                     _state.dispatch("command_permission_error", ctx)
                 break
         return
 
     @commands.Cog.listener()
-    async def on_socket_response(self, payload: dict):
+    async def on_socket_raw_receive(self, msg):
+        if type(msg) is bytes:
+            self.bot._buffer.extend(msg)
+
+            if len(msg) < 4 or msg[-4:] != b'\x00\x00\xff\xff':
+                return
+            msg = getattr(self.bot, "_zlib").decompress(self.bot._buffer)
+            msg = msg.decode('utf-8')
+            self.bot._buffer = bytearray()
+        payload = getattr(discord.utils, "_from_json")(msg)
+
         data = payload.get("d", {})
         t = payload.get("t", "")
         op = payload.get("op", "")

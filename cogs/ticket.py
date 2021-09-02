@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 DBS = None
 
 
-class SocketReceive(commands.Cog):
+class TicketReceive(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         with open(f"{directory}/data/ticket.json", "r", encoding='utf-8') as file:
@@ -239,4 +239,4 @@ class SocketReceive(commands.Cog):
 
 
 def setup(client):
-    client.add_cog(SocketReceive(client))
+    client.add_cog(TicketReceive(client))

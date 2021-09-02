@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 DBS = None
 
 
-class SocketReceive(commands.Cog):
+class WelcomeMessage(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -101,4 +101,4 @@ class SocketReceive(commands.Cog):
 
 
 def setup(client):
-    client.add_cog(SocketReceive(client))
+    client.add_cog(WelcomeMessage(client))
