@@ -7,11 +7,11 @@
 </p>
 2020년 계획된 MBOT 프로젝트를 재구성한 프로젝트입니다.
 
-### 단계별 개발 현황
+## 단계별 개발 현황
 
 MBOT의 기능이 생각보다 다양하게 구성된 관게로 아래에 작업 현황이 기재되어 있습니다.
 
-#### Project MBOT
+### Project MBOT
 * [ ] Logging Service (3단계)
     * [ ] Backup Chatting Service(BCS) (2단계)
 * [ ] Leveling Service(2단계)
@@ -26,7 +26,25 @@ MBOT의 기능이 생각보다 다양하게 구성된 관게로 아래에 작업
       + 추가로 "인증" 기능을 도입하여 사전에 매크로를 차단합니다.
     * [ ] Command Management Service (1단계)
     
-#### Project MBOT (v2)
+### Project MBOT (v2)
 * [x] Welcome Message (1단계)
 * [x] Ticket (1단계)
 * [ ] Custom Service (1단계)
+
+## Notes
+아래 사항은 개발에 필요한 노트 자료입니다.
+
+### 티켓 백업데이터 처리방안
+```json
+{
+    "GUILD-ID": [
+        {
+            "type": "{ setting / (ticket) }",
+            "channel": "CHANNEL-ID",
+            "author": "Contact AUTHOR-ID"
+        }
+    ]
+}
+```
+* `channel` 키의 DM 기능(모드 1번)을 사용 할 경우 관리자 문의 채널 ↔ DM 중, 관리자채널 ID 값이 포함됩니다.
+* `type` 값이 setting 일 경우, `Ticket` 모델과 동일한 양식이 포함됩니다. (Guild ID 제외)
