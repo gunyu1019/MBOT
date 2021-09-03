@@ -37,7 +37,7 @@ class Ticket(DatabaseModel):
         self.logging_channel_id = data.get("ticket_log_id")
 
     @property
-    def channel(self) -> discord.TextChannel:
+    def channel(self) -> typing.Union[discord.TextChannel, discord.Thread]:
         return self.guild.get_channel(self.channel_id)
 
     @property

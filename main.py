@@ -6,7 +6,6 @@ from discord.ext import commands
 from config.config import parser
 from config.log_config import log
 
-from module.http import HttpClient
 from utils.prefix import get_prefix
 from utils.token import token
 

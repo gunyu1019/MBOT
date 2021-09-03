@@ -1,21 +1,3 @@
-"""GNU GENERAL PUBLIC LICENSE
-Version 3, 29 June 2007
-
-Copyright (c) 2021 gunyu1019
-
-PUBG BOT is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-PUBG BOT is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with PUBG BOT.  If not, see <https://www.gnu.org/licenses/>.
-"""
 import json
 import logging
 import os
@@ -53,15 +35,45 @@ class TicketReceive(commands.Cog):
             number=kwargs.get("count")
         )
 
+    def save_setting(self, guild: Union[discord.Guild, int], data: Ticket):
+        if isinstance(guild, discord.Guild):
+            guild = guild.id
+        if guild not in self.ticket:
+            self.ticket[guild] = []
+
+            guild_st = data.data
+            guild_st["type"] = "setting"
+            self.ticket[guild].append(guild_st)
+            return
+
+        for index, _data in enumerate(self.ticket[guild]):
+            if _data.get("type") == "setting":
+                self.ticket.get(guild, []).update(data.data)
+
     @commands.Cog.listener()
     async def on_ticket(self, component: ComponentsContext):
         database = Database(bot=self.bot, guild=component.guild)
         if not database.get_activation("ticket"):
             return
         data = database.get_data("ticket")
-        if component.author.id in self.ticket:
-            await component.send(content="이미 티켓이 열려 있습니다!", hidden=True)
-            return
+        self.save_setting(guild=component.guild.id, data=data)
+        if data.mode == 1:
+            for guild_id in self.ticket.keys():
+                for check_ticket in self.ticket.get(guild_id, []):
+                    if component.author.id == check_ticket.get("author"):
+                        if component.guild.id == guild_id:
+                            await component.send(content="이미 티켓이 열려 있습니다!", hidden=True)
+                            return
+                        await component.send(
+                                content="다른 서버의 티켓이 열려 있어, 해당 서버의 티켓을 사용할 수 없습니다.",
+                                hidden=True
+                        )
+                        return
+        else:
+            for check_ticket in self.ticket.get(component.guild.id, []):
+                if component.author.id == check_ticket.get("author"):
+                    await component.send(content="이미 티켓이 열려 있습니다!", hidden=True)
+                    return
 
         count = None
         if '{number}' in data.template:
@@ -144,7 +156,7 @@ class TicketReceive(commands.Cog):
             return
 
         convert = Convert(guild=component.guild, member=component.author)
-        self.ticket[component.author.id] = (channel.id, data.data)
+        self.ticket[component.guild.id].append({"type": "ticket", "channel": channel.id, "author": component.author.id})
         if data.comment is not None and data.comment != {}:
             if data.mode == 0 or data.mode == 2 or data.mode == 3:
                 _channel = MessageSendable(state=getattr(self.bot, "_connection"), channel=data.channel)
@@ -191,9 +203,11 @@ class TicketReceive(commands.Cog):
         return
 
     @commands.Cog.listener()
-    async def on_ticket_close(self, data: Union[Message, InteractionContext, ComponentsContext]):
-        database = Database(bot=self.bot, guild=data.guild)
+    async def on_ticket_close(self, context: Union[Message, InteractionContext, ComponentsContext]):
+        database = Database(bot=self.bot, guild=context.guild)
         data = database.get_data("ticket")
+        self.save_setting(guild=context.guild, data=data)
+
         author_id = None
         for ticket in self.ticket.keys():
             if data.channel in self.ticket[ticket]:
@@ -201,7 +215,7 @@ class TicketReceive(commands.Cog):
                 break
         if author_id is None:
             return
-        author = data.guild.get_member(author_id)
+        author = context.guild.get_member(author_id)
 
         if data.mode == 0:
             data.channel.set_permission(
@@ -213,6 +227,8 @@ class TicketReceive(commands.Cog):
                     view_channel=False
                 )
             )
+        # elif data.mode == 2 or data.mode == 3:
+
         if data.logging and data.logging_channel_id is not None:
             logging_data = "{guild}\n".format(guild=data.guild.name)
             async for message in data.channel.history(oldest_first=True):
@@ -236,7 +252,10 @@ class TicketReceive(commands.Cog):
             embed.add_field(name="Opener", value=author, inline=True)
             embed.add_field(name="Closer", value=data.author, inline=True)
             await logging_channel.send(embed=embed, files=d_file)
-        await data.channel.delete()
+        if data.mode == 2 and data.mode == 3:
+            await data.channel.edit(archived=True)
+        else:
+            await data.channel.delete()
         self.ticket.pop(author_id)
         with open(os.path.join(directory, "data", "ticket.json"), "w", encoding='utf-8') as file:
             json.dump(self.ticket, fp=file, indent=4)

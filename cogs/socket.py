@@ -120,7 +120,6 @@ class SocketReceive(commands.Cog):
         if t == "PRESENCE_UPDATE" or op != 0:
             return
 
-        print(payload)
         logger.debug(payload)
 
         state: ConnectionState = getattr(self.bot, "_connection")
