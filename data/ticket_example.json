@@ -1,9 +1,10 @@
 {
     "GUILD-ID": [
         {
-            "type": "{ setting / (ticket) }",
+            "type": "ticket",
             "channel": "CHANNEL-ID // DM 기능(모드 1번)을 사용 할 경우 관리자채널 <-> DM 중, 관리자채널 ID 값이 포함됩니다.",
-            "author": "Contact AUTHOR-ID"
+            "author": "Contact AUTHOR-ID",
+            "setting": {}
         }
     ]
 }

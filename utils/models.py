@@ -18,7 +18,7 @@ class DatabaseModel:
 
     @property
     def guild(self) -> discord.Guild:
-        return self.bot.get_guild(id=self.guild_id)
+        return self.bot.get_guild(self.guild_id)
 
 
 class Ticket(DatabaseModel):

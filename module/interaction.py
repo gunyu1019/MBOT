@@ -161,7 +161,7 @@ class InteractionContext:
                 )
             else:
                 await self.http.post_initial_response(payload=payload, interaction=self._interaction_data)
-                resp = await self.http.get_initial_response()
+                resp = await self.http.get_initial_response(interaction=self._interaction_data)
             self.responded = True
         else:
             resp = await self.http.post_followup(
