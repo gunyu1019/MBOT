@@ -42,6 +42,20 @@ class TicketReceive(commands.Cog):
             tickets.extend(ticket)
         return tickets
 
+    @staticmethod
+    async def send(message: Message, send_func):
+        files = []
+        if len(message.attachments) != 0:
+            for attachment in message.attachments:
+                file = await attachment.to_file()
+                files.append(file)
+        msg = await send_func(
+            content="**{author}**: {message}".format(author=message.author, message=message.content),
+            files=None if len(message.attachments) == 0 else files
+        )
+        await message.add_reaction("\U00002705")
+        return msg
+
     @commands.Cog.listener()
     async def on_ticket(self, context: ComponentsContext):
         database = Database(bot=self.bot, guild=context.guild)
@@ -76,7 +90,13 @@ class TicketReceive(commands.Cog):
             if len(cut_names) > 1:
                 front_name = cut_names[0]
                 end_name = cut_names[1]
-                for channel in data.category.channels:
+                channels = []
+                if data.mode == 0 or data.mode == 1:
+                    channels = data.category.channels
+                elif data.mode == 2 or data.mode == 3:
+                    channels = data.channel.threads
+
+                for channel in channels:
                     number = channel.name.lstrip(front_name).rstrip(end_name)
                     if number.isdecimal():
                         opened_number.append(int(number))
@@ -149,7 +169,7 @@ class TicketReceive(commands.Cog):
                 ),
                 type=discord.ChannelType.private_thread
             )
-            await channel.add_user(context.author.id)
+            await channel.add_user(context.author)
         elif data.mode == 3:
             channel = await data.channel.create_thread(
                 name=self.convert_template(
@@ -160,7 +180,7 @@ class TicketReceive(commands.Cog):
                 ),
                 type=discord.ChannelType.public_thread
             )
-            await channel.add_user(context.author.id)
+            await channel.add_user(context.author)
         else:
             # Not Worked
             return
@@ -201,52 +221,57 @@ class TicketReceive(commands.Cog):
 
     @commands.Cog.listener()
     async def on_interaction_message(self, message: Message):
-        if message.channel.type != discord.ChannelType.private:
+        if message.author.bot:
             return
 
-        all_tickets = self.get_all_ticket
-        ticket = None
-        for _data in all_tickets:
-            if _data.get("author") == message.author.id and _data.get("mode") == 1:
-                ticket = _data
-        if ticket is None:
-            return
+        if message.channel.type == discord.ChannelType.private:
+            all_tickets = self.get_all_ticket
+            ticket = None
+            for _data in all_tickets:
+                if _data.get("author") == message.author.id and _data.get("mode") == 1:
+                    ticket = _data
+            if ticket is None:
+                return
 
-        data = Ticket(data=ticket.get("setting"), bot=self.bot)
-        channel_id = ticket.get("channel")
-        channel = data.guild.get_channel(channel_id)
-        files = []
-        if len(message.attachments) != 0:
-            for attachment in message.attachments:
-                file = await attachment.to_file()
-                files.append(file)
-        await channel.send(
-            content="**{author}**: {message}".format(author=message.author, message=message.content),
-            files=None if len(message.attachments) == 0 else files
-        )
-        await message.add_reaction("\U00002705")
+            data = Ticket(data=ticket.get("setting"), bot=self.bot)
+            channel_id = ticket.get("channel")
+            channel = data.guild.get_channel(channel_id)
+            await self.send(message, channel.send)
+        elif message.channel.type == discord.ChannelType.text:
+            ticket = None
+            for _data in self.ticket.get(str(message.guild.id), []):
+                if _data.get("channel") == message.channel.id and _data.get("mode") == 1:
+                    ticket = _data
+            if ticket is None:
+                return
+            author_id = ticket.get("author")
+            author = message.guild.get_member(author_id)
+            await self.send(message, author.send)
         return
 
     @commands.Cog.listener()
     async def on_ticket_close(self, context: Union[Message, InteractionContext, ComponentsContext]):
-        database = Database(bot=self.bot, guild=context.guild)
-        data = database.get_data("ticket")
-
         ticket = None
-        if data.mode == 1:
-            all_tickets = self.get_all_ticket
-            for _data in all_tickets:
-                if _data.get("author") == context.author.id or _data.get("channel") == context.channel.id:
-                    ticket = _data
-        else:
+        guild = context.guild
+        if context.channel.type == discord.ChannelType.private:
+            for guild_data in self.ticket.keys():
+                for _data in self.ticket[guild_data]:
+                    if _data.get("author") == context.author.id and _data.get("mode") == 1:
+                        ticket = _data
+                        guild = self.bot.get_guild(int(guild_data))
+            data = Ticket(data=ticket.get("setting"), bot=self.bot)
+        elif context.channel.type == discord.ChannelType.text:
+            database = Database(bot=self.bot, guild=context.guild)
+            data = database.get_data("ticket")
+
             all_tickets = self.ticket.get(str(context.guild.id), [])
             for _data in all_tickets:
                 if _data.get("channel") == context.channel.id:
                     ticket = _data
         if ticket is None:
             return
-        author = context.guild.get_member(ticket.get("author"))
-        channel = context.guild.get_channel(ticket.get("channel")) or context.guild.get_thread(ticket.get("channel"))
+        author = guild.get_member(ticket.get("author"))
+        channel = guild.get_channel(ticket.get("channel")) or context.guild.get_thread(ticket.get("channel"))
 
         if data.mode == 0:
             channel: discord.TextChannel
@@ -266,7 +291,7 @@ class TicketReceive(commands.Cog):
                 if message.author == self.bot.user and data.mode == 1:
                     content = content.lstrip("**{author}**: ".format(author=author))
 
-                logging_data += "[{datetime}|{author}]: {content}".format(
+                logging_data += "[{datetime}|{author}]: {content}\n".format(
                     datetime=message.created_at.strftime("%Y-%m-%d %p %I:%M:%S"),
                     author=message.author, content=content
                 )
@@ -280,17 +305,17 @@ class TicketReceive(commands.Cog):
             d_file = discord.File(os.path.join(directory, "data", "ticket", "{0}.txt".format(channel.id)))
             embed = discord.Embed(title="Ticket Logging", colour=0x0080ff)
             embed.add_field(name="Opener", value=author, inline=True)
-            embed.add_field(name="Closer", value=data.author, inline=True)
-            await logging_channel.send(embed=embed, files=d_file)
+            embed.add_field(name="Closer", value=context.author, inline=True)
+            await logging_channel.send(embed=embed, file=d_file)
 
-        if data.mode == 2 and data.mode == 3:
+        if data.mode == 2 or data.mode == 3:
             channel: discord.Thread
             await channel.edit(archived=True)
         else:
             channel: discord.TextChannel
             await channel.delete()
-        position = self.ticket[str(context.guild.id)].index(ticket)
-        self.ticket[str(context.guild.id)].pop(position)
+        position = self.ticket[str(guild.id)].index(ticket)
+        self.ticket[str(guild.id)].pop(position)
         with open(os.path.join(directory, "data", "ticket.json"), "w", encoding='utf-8') as file:
             json.dump(self.ticket, fp=file, indent=4)
         return

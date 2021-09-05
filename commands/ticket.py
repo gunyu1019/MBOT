@@ -36,10 +36,6 @@ class Command:
 
     @_command.command(name="티켓", permission=1, interaction=False)
     async def ticket(self, ctx: Union[SlashContext, Message]):
-        database = Database(bot=self.bot, guild=ctx.guild)
-        if not database.get_activation("ticket"):
-            return
-        data = database.get_data("ticket")
         option1 = None
         print(ctx.options)
         if isinstance(ctx, SlashContext):
@@ -48,11 +44,15 @@ class Command:
             option1 = ctx.options[0]
 
         if option1 == "불러오기":
+            database = Database(bot=self.bot, guild=ctx.guild)
+            if not database.get_activation("ticket"):
+                return
+            data = database.get_data("ticket")
             if data.channel_id is None or data.message is None:
                 return
             convert = Convert(guild=ctx.guild)
             channel = MessageSendable(state=getattr(self.bot, "_connection"), channel=data.channel)
-            msg = await channel.send(
+            await channel.send(
                 content=convert.convert_content(
                     data.message.get("content")
                 ),

@@ -1,3 +1,5 @@
 # discord.py==2.0.0a
 DBSkr==2.0
 asyncio~=3.4.3
+discord==1.0.1
+PyMySQL==0.10.1

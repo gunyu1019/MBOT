@@ -33,11 +33,11 @@ class Ticket(DatabaseModel):
         self.message = self.convert_dict(data.get("ticket_template"))
         self.topic = data.get("ticket_topic_template")
         self.emoji = self.convert_dict(data.get("ticket_emoji"))
-        self.logging = bool(data.get("logging_channel"))
-        self.logging_channel_id = data.get("ticket_log_id")
+        self.logging = bool(data.get("logging"))
+        self.logging_channel_id = data.get("logging_channel")
 
     @property
-    def channel(self) -> typing.Union[discord.TextChannel, discord.Thread]:
+    def channel(self) -> discord.TextChannel:
         return self.guild.get_channel(self.channel_id)
 
     @property
