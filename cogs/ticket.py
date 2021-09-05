@@ -119,12 +119,12 @@ class TicketReceive(commands.Cog):
                         send_messages=True,
                         embed_links=True,
                         attach_files=True,
+                        add_reactions=True,
                         view_channel=True
                     ),
                     context.author: discord.PermissionOverwrite(
                         read_message_history=True,
                         send_messages=True,
-                        embed_links=True,
                         attach_files=True,
                         view_channel=True
                     ),
@@ -155,11 +155,12 @@ class TicketReceive(commands.Cog):
                         send_messages=True,
                         embed_links=True,
                         attach_files=True,
+                        add_reactions=True,
                         view_channel=True
                     )
                 }
             )
-        elif data.mode == 2:
+        elif data.mode == 2 and context.guild.premium_tier >= 2:
             channel = await data.channel.create_thread(
                 name=self.convert_template(
                     name=data.template,
@@ -170,7 +171,7 @@ class TicketReceive(commands.Cog):
                 type=discord.ChannelType.private_thread
             )
             await channel.add_user(context.author)
-        elif data.mode == 3:
+        elif data.mode == 3 or (data.mode == 2 and context.guild.premium_tier < 2):
             channel = await data.channel.create_thread(
                 name=self.convert_template(
                     name=data.template,
@@ -182,7 +183,14 @@ class TicketReceive(commands.Cog):
             )
             await channel.add_user(context.author)
         else:
-            # Not Worked
+            # Ticket Mode Not Found (Not Worked)
+            embed = discord.Embed(
+                title="에러(Error)",
+                description="티켓을 생성하는 도중 에러가 발생하였습니다. 자세한 사항은 디스코드 개발자에게 문의해주시기 바랍니다.",
+                color=0xaa0000
+            )
+            embed.description += "```\nERROR CODE: TICKET-MODE-NOT-FOUND\n```"
+            await context.send(embed=embed)
             return
 
         convert = Convert(guild=context.guild, member=context.author)
@@ -252,7 +260,9 @@ class TicketReceive(commands.Cog):
     @commands.Cog.listener()
     async def on_ticket_close(self, context: Union[Message, InteractionContext, ComponentsContext]):
         ticket = None
+        data = None
         guild = context.guild
+
         if context.channel.type == discord.ChannelType.private:
             for guild_data in self.ticket.keys():
                 for _data in self.ticket[guild_data]:
@@ -291,7 +301,10 @@ class TicketReceive(commands.Cog):
                 if message.author == self.bot.user and data.mode == 1:
                     content = content.lstrip("**{author}**: ".format(author=author))
 
-                logging_data += "[{datetime}|{author}]: {content}\n".format(
+                if len(message.attachments) != 0:
+                    content += " ({0})".format(", ".join([attachment.url for attachment in message.attachments]))
+
+                logging_data += "[ {datetime} | {author} ]: {content}\n".format(
                     datetime=message.created_at.strftime("%Y-%m-%d %p %I:%M:%S"),
                     author=message.author, content=content
                 )

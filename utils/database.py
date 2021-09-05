@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 
 
 def get_database(database=None):
-    for tries in ['MySQL2', 'MySQL1']:
+    for tries in ['MySQL1', 'MySQL2']:
         host = parser.get(tries, 'host')
         user = parser.get(tries, 'user')
         password = parser.get(tries, 'pass')
