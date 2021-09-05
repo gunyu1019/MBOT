@@ -101,12 +101,6 @@ class Convert:
                 name=emoji.get("name"),
                 id=emoji.get("id")
             )
-        print(Button(
-            custom_id=custom_id,
-            label=data.get("label"),
-            style=data.get("style"),
-            emoji=emoji
-        ).to_dict())
         return Button(
             custom_id=custom_id,
             label=data.get("label"),

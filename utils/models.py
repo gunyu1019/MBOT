@@ -21,6 +21,29 @@ class DatabaseModel:
         return self.bot.get_guild(self.guild_id)
 
 
+class Authorized(DatabaseModel):
+    def __init__(self, data: dict, bot: discord.Client):
+        super().__init__(data, bot)
+
+        self.robot = bool(data.get("check_robot"))
+        self.robot_kick = data.get("robot_kick")
+        self.user_role_id = data.get("user_role")
+        self.bot_role_id = data.get("bot_role")
+        self.reaction = bool(data.get("reaction"))
+        self.reaction_message = self.convert_dict(data.get("reaction_commnet"))
+        self.reaction_button = self.convert_dict(data.get("reaction_button"))
+        self.in_out_ban = bool(data.get("ban_in_and_out"))
+        self.in_out_count = int(data.get("in_and_out_count"))
+
+    @property
+    def user_role(self) -> discord.Role:
+        return self.guild.get_role(self.user_role_id)
+
+    @property
+    def bot_role(self) -> discord.Role:
+        return self.guild.get_role(self.bot_role_id)
+
+
 class Ticket(DatabaseModel):
     def __init__(self, data: dict, bot: discord.Client):
         super().__init__(data, bot)

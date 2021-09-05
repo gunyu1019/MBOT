@@ -48,7 +48,9 @@ class Database:
         self.bot = bot
 
     def _get_model(self, data: dict, table: str):
-        if table == "ticket":
+        if table == "authorized":
+            return models.Authorized(data, self.bot)
+        elif table == "ticket":
             return models.Ticket(data, self.bot)
         elif table == "welcomeMessage":
             return models.WelcomeMessage(data, self.bot)
