@@ -31,7 +31,9 @@ default_prefixes = list(json.loads(parser.get("DEFAULT", "default_prefixes")))
 class Command:
     def __init__(self, bot):
         self.client = bot
-        self.color = int(parser.get("DEFAULT", "color"), 16)
+        self.color = int(parser.get("Color", "default"), 16)
+        self.error_color = int(parser.get("Color", "error"), 16)
+        self.warning_color = int(parser.get("Color", "warning"), 16)
 
     @commands.command(aliases=['핑'], permission=4)
     async def ping(self, ctx):

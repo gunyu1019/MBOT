@@ -6,6 +6,7 @@ import discord
 from discord.ext import commands
 from typing import Union, List
 
+from config.config import parser
 from module.interaction import ComponentsContext, InteractionContext
 from module.message import Message, MessageSendable
 from utils.convert import Convert
@@ -22,6 +23,42 @@ class TicketReceive(commands.Cog):
         self.bot = bot
         with open(os.path.join(directory, "data", "ticket.json"), "r", encoding='utf-8') as file:
             self.ticket = json.load(fp=file)
+        self.color = int(parser.get("Color", "default"), 16)
+        self.error_color = int(parser.get("Color", "error"), 16)
+        self.warning_color = int(parser.get("Color", "warning"), 16)
+
+        self.already_ticket_opened = discord.Embed(
+            title="안내(Warning)",
+            description="티켓이 이미 열려있습니다. 만일 티켓이 닫혀있는데, 해당 안내 문구가 나왔을 경우 디스코드 봇 관리자에게 문의해주세요.",
+            color=self.warning_color
+        )
+        self.already_ticket_private_opened = discord.Embed(
+            title="안내(Warning)",
+            description="다른 서버의 티켓이 열려 있어, 티켓 기능을 사용하실 수 없습니다.",
+            color=self.warning_color
+        )
+        self.ticket_mode_not_found = discord.Embed(
+            title="에러(Error)",
+            description="티켓을 생성하는 도중 에러가 발생하였습니다. 자세한 사항은 디스코드 개발자에게 문의해주시기 바랍니다.",
+            color=self.error_color
+        )
+        self.ticket_close_not_found = discord.Embed(
+            title="안내(Warning)",
+            description="닫으시려는 티켓을 찾을 수 없습니다.",
+            color=self.warning_color
+        )
+        self.ticket_process = discord.Embed(
+            title="티켓(Ticket)",
+            description="정상적으로 티켓을 열었습니다. {ticket_channel} 를 참조해주세요.",
+            color=self.color
+        )
+
+        self.already_ticket_opened.description += "\n```WARNING CODE: TICKET-ALREADY-OPENED(01)\n```"
+        self.already_ticket_private_opened.description += "\n```WARNING CODE: TICKET-ALREADY-OPENED(02)\n" \
+                                                          "ALREADY OPEN TICKET GUILD: {guild}({guild_id})\n```"
+        self.ticket_close_not_found.description += "```\nWARNING CODE: TICKET-NOT-FOUND\n```"
+        self.ticket_mode_not_found.description += "```\nERROR CODE: TICKET-MODE-NOT-FOUND\n" \
+                                                  "GUILD-TICKET-MODE: {ticket_mode} (0 <= TICKET MODE <= 3)\n```"
 
     @staticmethod
     def convert_template(name: str, guild: discord.Guild, member: discord.Member, **kwargs):
@@ -70,17 +107,21 @@ class TicketReceive(commands.Cog):
                 for check_ticket in self.ticket[guild_id]:
                     if context.author.id == check_ticket.get("author") and check_ticket.get("mode") == 1:
                         if str(context.guild.id) == guild_id:
-                            await context.send(content="이미 티켓이 열려 있습니다!", hidden=True)
+                            await context.send(embed=self.already_ticket_opened, hidden=True)
                             return
+                        self.already_ticket_private_opened.description = self.already_ticket_private_opened.description.format(
+                            guild=self.bot.get_guild(guild_id),
+                            guild_id=guild_id
+                        )
                         await context.send(
-                                content="다른 서버의 티켓이 열려 있어, 해당 서버의 티켓을 사용할 수 없습니다.",
-                                hidden=True
+                            embed=self.already_ticket_private_opened,
+                            hidden=True
                         )
                         return
         else:
             for check_ticket in self.ticket[str(context.guild.id)]:
                 if context.author.id == check_ticket.get("author"):
-                    await context.send(content="이미 티켓이 열려 있습니다!", hidden=True)
+                    await context.send(embed=self.already_ticket_opened, hidden=True)
                     return
 
         count = None
@@ -184,13 +225,8 @@ class TicketReceive(commands.Cog):
             await channel.add_user(context.author)
         else:
             # Ticket Mode Not Found (Not Worked)
-            embed = discord.Embed(
-                title="에러(Error)",
-                description="티켓을 생성하는 도중 에러가 발생하였습니다. 자세한 사항은 디스코드 개발자에게 문의해주시기 바랍니다.",
-                color=0xaa0000
-            )
-            embed.description += "```\nERROR CODE: TICKET-MODE-NOT-FOUND\n```"
-            await context.send(embed=embed)
+            self.ticket_mode_not_found.description = self.ticket_mode_not_found.description.format(ticket_mode=data.mode)
+            await context.send(embed=self.ticket_mode_not_found, hidden=True)
             return
 
         convert = Convert(guild=context.guild, member=context.author)
@@ -223,7 +259,8 @@ class TicketReceive(commands.Cog):
                         data.comment.get("embed", {})
                     )
                 )
-        await context.send(content="티켓이 열렸습니다.", hidden=True)
+        self.ticket_process.description = self.ticket_process.description.format(ticket_channel=channel.mention)
+        await context.send(embed=self.ticket_process, hidden=True)
         with open(os.path.join(directory, "data", "ticket.json"), "w", encoding='utf-8') as file:
             json.dump(self.ticket, fp=file, indent=4)
 
@@ -279,6 +316,7 @@ class TicketReceive(commands.Cog):
                 if _data.get("channel") == context.channel.id:
                     ticket = _data
         if ticket is None:
+            await context.send(embed=self.ticket_close_not_found)
             return
         author = guild.get_member(ticket.get("author"))
         channel = guild.get_channel(ticket.get("channel")) or context.guild.get_thread(ticket.get("channel"))

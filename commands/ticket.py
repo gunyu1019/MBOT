@@ -32,7 +32,9 @@ from utils.database import Database
 class Command:
     def __init__(self, bot: discord.Client):
         self.bot = bot
-        self.color = int(parser.get("DEFAULT", "color"), 16)
+        self.color = int(parser.get("Color", "default"), 16)
+        self.error_color = int(parser.get("Color", "error"), 16)
+        self.warning_color = int(parser.get("Color", "warning"), 16)
 
     @_command.command(name="티켓", permission=1, interaction=False)
     async def ticket(self, ctx: Union[SlashContext, Message]):
