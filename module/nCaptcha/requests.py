@@ -59,7 +59,6 @@ class Api:
 
         session = await self.get_session()
         async with session.request(method, url, **kwargs) as response:
-            print(url, response.status, response.content_type, kwargs['params'])
             if response.content_type == "application/json":
                 data = await response.json()
             elif response.content_type.startswith("image/"):

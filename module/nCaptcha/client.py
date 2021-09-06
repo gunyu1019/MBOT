@@ -45,9 +45,11 @@ class Client:
             key = self.last_key
         return await self.http.sound_get(key=key)
 
-    async def verification(self, key: str, value: str, type: int = None):
+    async def verification(self, value: str, key: str = None, type: int = None):
         if type is None:
             type = self.type
+        if key is None:
+            key = self.last_key
 
         if type == 0:
             return await self.http.image_key(code=1, key=key, value=value)

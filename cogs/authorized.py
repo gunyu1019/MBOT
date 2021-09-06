@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -13,7 +14,7 @@ from config.config import parser
 from module.components import ActionRow, Button
 from module.interaction import ComponentsContext, InteractionContext
 from module import nCaptcha
-from module.message import MessageSendable
+from module.message import MessageSendable, Message
 from utils.database import Database
 from utils.directory import directory
 from utils.models import Authorized
@@ -42,9 +43,14 @@ class AuthorizedReceived(commands.Cog):
             description="해당 서버({guild})에 접근하기 위해서는 캡차 과정을 통과하셔야 합니다. 아래의 {tp}의 값을 알맞게 입력해주세요.",
             color=self.color
         )
-        self.robot_failed = discord.Embed(
+        self.robot_process_verification = discord.Embed(
+            title="인증(Authorized)",
+            description="30초 내에 {tp}안에 있는 값을 정확히 입력해주세요.",
+            color=self.color
+        )
+        self.robot_wrong = discord.Embed(
             title="안내(Warning)",
-            description="인증에 실패하였습니다. 인증을 다시 시도해주시기 바랍니다.",
+            description="결과 다릅니다. 인증을 다시 시도해주시기 바랍니다.",
             color=self.warning_color
         )
         self.robot_timeout1 = discord.Embed(
@@ -54,12 +60,19 @@ class AuthorizedReceived(commands.Cog):
         )
         self.robot_timeout2 = discord.Embed(
             title="안내(Warning)",
-            description="인증 입력 시간(10초)가 초과되어 인증에 실패하였습니다. 인증을 다시 시도해주시기 바랍니다.",
+            description="인증 입력 시간(30초)가 초과되어 인증에 실패하였습니다. 인증을 다시 시도해주시기 바랍니다.",
             color=self.warning_color
         )
         self.robot_process.set_footer(text="Powered by Naver Captcha")
 
-    async def robot_check(self, member: discord.Member, mode: RobotCheckType) -> bool:
+    async def robot_check(
+            self,
+            member: discord.Member,
+            mode: RobotCheckType,
+            client: nCaptcha.Client = None,
+            message: Message = None,
+            refresh: bool = False
+    ) -> bool:
         mode_commnet = {
             0: "이미지",
             1: "음성"
@@ -72,15 +85,21 @@ class AuthorizedReceived(commands.Cog):
         if channel is None:
             channel = await member.create_dm()
         _channel = MessageSendable(state=getattr(self.bot, "_connection"), channel=channel)
-        client = nCaptcha.Client(id=naver_id, secret=naver_secret, loop=self.bot.loop)
-        now = datetime.now()
+        if client is None:
+            client = nCaptcha.Client(id=naver_id, secret=naver_secret, loop=self.bot.loop)
 
         if mode.value == 0:
-            file = await client.get_image()
+            if not refresh:
+                file = await client.get_image()
+            else:
+                file = await client.refresh_sound()
             tp = "jpeg"
             self.robot_process.set_image(url="attachment://Authorized-File.jpeg")
         elif mode.value == 1:
-            file = await client.get_sound()
+            if not refresh:
+                file = await client.get_sound()
+            else:
+                file = await client.refresh_sound()
             tp = "wav"
         else:
             await client.http.requests.close()
@@ -88,30 +107,107 @@ class AuthorizedReceived(commands.Cog):
         discord_file = discord.File(io.BytesIO(file), filename="Authorized-File.{0}".format(tp))
 
         try:
-            await _channel.send(
-                embed=self.robot_process,
-                file=discord_file,
-                components=[
-                    ActionRow(components=[
-                        Button(style=1, custom_id="authorized", label="인증하기"),
-                        Button(
-                            style=1,
-                            custom_id="change_mode",
-                            label="유형 변경({0}->{1})".format(
-                                mode_commnet[mode.value], mode_commnet[1 - mode.value]
-                            )
-                        )
-                    ])
-                ]
-            )
+            if message is None:
+                msg = await _channel.send(
+                    embed=self.robot_process,
+                    file=discord_file,
+                    components=[
+                        ActionRow(components=[
+                            Button(style=1, custom_id="authorized", label="인증 하기"),
+                            Button(
+                                style=1,
+                                custom_id="authorized_change_mode",
+                                label="유형 변경({0}->{1})".format(
+                                    mode_commnet[mode.value], mode_commnet[1 - mode.value]
+                                )
+                            ),
+                            Button(style=1, custom_id="authorized_refresh", label="갱신 하기"),
+                        ])
+                    ]
+                )
+            else:
+                await message.edit(
+                    embed=self.robot_process,
+                    file=discord_file,
+                    components=[
+                        ActionRow(components=[
+                            Button(style=1, custom_id="authorized", label="인증 하기"),
+                            Button(
+                                style=1,
+                                custom_id="authorized_change_mode",
+                                label="유형 변경({0}->{1})".format(
+                                    mode_commnet[mode.value], mode_commnet[1 - mode.value]
+                                )
+                            ),
+                            Button(style=1, custom_id="authorized_refresh", label="갱신 하기"),
+                        ])
+                    ]
+                )
+                msg = message
         except discord.Forbidden:
-            await _channel.send(embed=self.robot_timeout1)
             await client.http.requests.close()
             return False
-        except Exception as e:
-            raise e
+        else:
+            try:
+                def check1(component: ComponentsContext):
+                    return component.author.id == member.id and \
+                           (component.message.id or component.message.webhook_id) == msg.id
+                result: ComponentsContext = await self.bot.wait_for("components", check=check1, timeout=300)
+            except asyncio.TimeoutError:
+                await _channel.send(embed=self.robot_timeout1)
+                await client.http.requests.close()
+                return False
+            else:
+                if result.custom_id == "authorized":
+                    self.robot_process_verification.description = self.robot_process_verification.description.format(
+                        guild=member.guild, tp=mode_commnet[mode.value]
+                    )
+                    await result.send(embed=self.robot_process_verification, hidden=True)
+
+                    def check2(_message: Message):
+                        return _message.author.id == member.id and _message.channel.id == member.dm_channel.id
+                    try:
+                        result: Message = await self.bot.wait_for("interaction_message", check=check2, timeout=30)
+                    except asyncio.TimeoutError:
+                        await _channel.send(embed=self.robot_timeout2)
+                        await client.http.requests.close()
+                        return False
+
+                    final_data = await client.verification(value=result.content)
+                    verification_result = final_data.get("result")
+                    if verification_result:
+                        await _channel.send(content="성공적으로 인증되었습니다 - Debugger")
+                        await client.http.requests.close()
+                        return True
+                    else:
+                        await _channel.send(embed=self.robot_wrong)
+                        await client.http.requests.close()
+                        return False
+                elif result.custom_id == "authorized_change_mode":
+                    await result.defer_update()
+                    another_mode = mode
+                    if mode.value == 1:
+                        another_mode = RobotCheckType.image
+                    elif mode.value == 0:
+                        another_mode = RobotCheckType.sound
+                    return await self.robot_check(
+                        member=member,
+                        mode=another_mode,
+                        client=client,
+                        message=msg,
+                        refresh=False
+                    )
+                elif result.custom_id == "authorized_refresh":
+                    await result.defer_update()
+                    return await self.robot_check(
+                        member=member,
+                        mode=mode,
+                        client=client,
+                        message=msg,
+                        refresh=True
+                    )
         await client.http.requests.close()
-        return True
+        return False
 
     @commands.command()
     async def test(self, ctx):
@@ -124,6 +220,11 @@ class AuthorizedReceived(commands.Cog):
         if not database.get_activation("authorized"):
             return
         data = database.get_data("authorized")
+        if member.bot:
+            if data.bot_role_id is None:
+                return
+            await member.add_roles(data.bot_role)
+            return
         if data.reaction:
             return
 
