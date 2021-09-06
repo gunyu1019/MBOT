@@ -12,12 +12,11 @@ from discord.ext import commands
 
 from config.config import parser
 from module.components import ActionRow, Button
-from module.interaction import ComponentsContext, InteractionContext
+from module.interaction import ComponentsContext
 from module import nCaptcha
 from module.message import MessageSendable, Message
 from utils.database import Database
 from utils.directory import directory
-from utils.models import Authorized
 from utils.token import naver_id, naver_secret
 
 logger = logging.getLogger(__name__)
@@ -46,6 +45,11 @@ class AuthorizedReceived(commands.Cog):
         self.robot_process_verification = discord.Embed(
             title="인증(Authorized)",
             description="30초 내에 {tp}안에 있는 값을 정확히 입력해주세요.",
+            color=self.color
+        )
+        self.robot_success = discord.Embed(
+            title="인증(Authorized)",
+            description="인증에 성공하였습니다..",
             color=self.color
         )
         self.robot_wrong = discord.Embed(
@@ -144,9 +148,9 @@ class AuthorizedReceived(commands.Cog):
                     ]
                 )
                 msg = message
-        except discord.Forbidden:
+        except discord.Forbidden as E:
             await client.http.requests.close()
-            return False
+            raise E
         else:
             try:
                 def check1(component: ComponentsContext):
@@ -176,7 +180,7 @@ class AuthorizedReceived(commands.Cog):
                     final_data = await client.verification(value=result.content)
                     verification_result = final_data.get("result")
                     if verification_result:
-                        await _channel.send(content="성공적으로 인증되었습니다 - Debugger")
+                        await _channel.send(embed=self.robot_success)
                         await client.http.requests.close()
                         return True
                     else:
@@ -209,13 +213,13 @@ class AuthorizedReceived(commands.Cog):
         await client.http.requests.close()
         return False
 
-    @commands.command()
-    async def test(self, ctx):
-        result = await self.robot_check(member=ctx.author, mode=RobotCheckType.image)
-        logger.info(result)
-
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
+        self.bot.dispatch(event_name="authorized", member=member)
+        return
+
+    @commands.Cog.listener()
+    async def on_authorized(self, member: discord.Member):
         database = Database(bot=self.bot, guild=member.guild)
         if not database.get_activation("authorized"):
             return
@@ -225,11 +229,23 @@ class AuthorizedReceived(commands.Cog):
                 return
             await member.add_roles(data.bot_role)
             return
-        if data.reaction:
-            return
 
         if data.robot:
-            await self.robot_check(member=member, mode=RobotCheckType.image)
+            try:
+                robot = await self.robot_check(member=member, mode=RobotCheckType.image)
+            except discord.Forbidden:
+                if data.robot_kick >= 2:
+                    # 일부 사용자는 DM을 차단하고 접속 한 경우가 있으며, 이럴 경우 해당 사용자는 인증이 필요하단 사실을 인지하지 못할 가능성이 높음.
+                    await asyncio.sleep(10)
+                    await member.kick(reason="AUTO KICK: Robot")
+                return
+
+            if not robot:
+                if data.robot_kick >= 1:
+                    await member.kick(reason="AUTO KICK: Robot")
+                return
+        if data.user_role_id is not None:
+            await member.add_roles(data.user_role)
         return
 
     @commands.Cog.listener()

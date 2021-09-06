@@ -48,39 +48,41 @@ class Database:
         self.bot = bot
 
     def _get_model(self, data: dict, table: str):
-        if table == "authorized":
-            return models.Authorized(data, self.bot)
-        elif table == "ticket":
-            return models.Ticket(data, self.bot)
-        elif table == "welcomeMessage":
-            return models.WelcomeMessage(data, self.bot)
-        elif table == "guildSetting":
-            return models.GuildSetting(data, self.bot)
+        if data is not None:
+            if table == "authorized":
+                return models.Authorized(data, self.bot)
+            elif table == "ticket":
+                return models.Ticket(data, self.bot)
+            elif table == "welcomeMessage":
+                return models.WelcomeMessage(data, self.bot)
+            elif table == "guildSetting":
+                return models.GuildSetting(data, self.bot)
         return data
 
-    def get_data(self, table: str):
+    def get_data(self, table: str, key: str = None):
         connect = get_database()
         cur = connect.cursor(pymysql.cursors.DictCursor)
         sql_command = pymysql.escape_string(f"select * from {table} where id=%s")
-        cur.execute(sql_command, self.guild.id)
+        cur.execute(sql_command, key or self.guild.id)
         result = cur.fetchone()
         connect.close()
         return self._get_model(result, table)
 
-    def check_data(self, table: str):
+    def check_data(self, table: str, key: str = None):
         connect = get_database()
         cur = connect.cursor(pymysql.cursors.DictCursor)
         sql_command = pymysql.escape_string(f"select EXISTS (select * from {table} where id=%s) as success")
-        cur.execute(sql_command, self.guild.id)
+        cur.execute(sql_command, key or self.guild.id)
         tf = cur.fetchone().get('success', False)
         connect.close()
         return bool(tf)
 
-    def set_data(self, table: str, datas: dict):
+    def set_data(self, table: str, datas: dict, key: str = None):
         setup = [name for name in datas.keys()]
-        args = [self.guild.id]
+        args = []
         for data in datas.keys():
             args.append(datas.get(data))
+        args.append(key or self.guild.id)
         connect = get_database()
         cur = connect.cursor(pymysql.cursors.DictCursor)
         if self.check_data(table=table):
@@ -90,7 +92,7 @@ class Database:
             )
         else:
             sql_command = pymysql.escape_string(
-                f"insert into {table}({', '.join(setup)}, id) value (%s{', %s' * len(args)})"
+                f"insert into {table}({', '.join(setup)}, id) value (%s{', %s' * (len(args) -1 )})"
             )
         cur.execute(sql_command, tuple(args))
         connect.commit()
