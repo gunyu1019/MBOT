@@ -26,7 +26,7 @@ connect = get_database()
 
 cur = connect.cursor(pymysql.cursors.DictCursor)
 try:
-    cur.execute("SELECT token, KoreanBots_token, topgg_token, UniqueBots_token from discord")
+    cur.execute("SELECT token, KoreanBots_token, topgg_token, UniqueBots_token, naver_id, naver_secret from discord")
 except pymysql.err.DatabaseError:
     client_list = {
         "token": parser.get("DEFAULT", "token"),
@@ -35,6 +35,8 @@ else:
     client_list = cur.fetchone()
 
 token = client_list.get('token')
+naver_id = client_list.get("naver_id")
+naver_secret = client_list.get("naver_secret")
 
 # Discord Bot Lists API TOKEN
 DBL_token = client_list.get('topgg_token')

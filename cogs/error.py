@@ -70,6 +70,7 @@ class Error(commands.Cog):
             embed = discord.Embed(title="\U000026A0 에러", description="권한이 부족합니다.", color=0xaa0000)
             await ctx.send(embed=embed)
             return
+        raise error
 
 
 def setup(client):
