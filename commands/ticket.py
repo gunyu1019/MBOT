@@ -42,7 +42,7 @@ class Command:
         print(ctx.options)
         if isinstance(ctx, SlashContext):
             option1 = ctx.options.get("종류")
-        elif isinstance(ctx, Message) and len(ctx.options) > 0:
+        elif isinstance(ctx, MessageCommand) and len(ctx.options) > 0:
             option1 = ctx.options[0]
 
         if option1 == "불러오기":

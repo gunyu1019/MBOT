@@ -85,10 +85,10 @@ class Database:
         args.append(key or self.guild.id)
         connect = get_database()
         cur = connect.cursor(pymysql.cursors.DictCursor)
-        if self.check_data(table=table):
+        if self.check_data(table=table, key=key):
             _setup = [f"{name}=%s" for name in setup]
             sql_command = pymysql.escape_string(
-                f"update {table} set {' '.join(_setup)} where id=%s"
+                f"update {table} set {', '.join(_setup)} where id=%s"
             )
         else:
             sql_command = pymysql.escape_string(

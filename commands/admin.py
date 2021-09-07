@@ -28,7 +28,6 @@ from discord.ext import commands
 
 from config.config import parser
 from module import commands as _command
-from module.message import MessageSendable
 from utils.database import get_database
 from utils.perm import check_perm
 from utils.prefix import get_prefix

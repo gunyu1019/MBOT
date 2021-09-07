@@ -143,7 +143,10 @@ class SocketReceive(commands.Cog):
             state.dispatch('interaction_command', command)
             return
         elif t == "MESSAGE_UPDATE":
-            print(data)
+            channel, _ = getattr(state, "_get_guild_channel")(data)
+            message = Message(state=state, data=data, channel=channel)
+            state.dispatch('interaction_message_update', message)
+            return
         return
 
 
