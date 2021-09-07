@@ -22,29 +22,41 @@ class StatisticsReceive(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    @staticmethod
+    def to_json(data: Union[dict, list]):
+        return json.dumps(data, indent=4, ensure_ascii=True)
+
     @commands.Cog.listener()
     async def on_interaction_message(self, message: Message):
         database = Database(bot=self.bot, guild=message.guild)
         if not database.get_activation("statistics"):
             return
-        database.set_data("message", datas={
+
+        author = message.author
+        data = {
             "channel_id": message.channel.id,
             "guild_id": message.guild.id,
-            "author_id": message.author.id,
-            "author_name": message.author.name,
-            "author_tag": message.author.discriminator,
+            "author_id": author.id,
+            "author_name": author.name,
+            "author_tag": author.discriminator,
             "content": message.content,
-            "embeds": json.dumps(
-                [embed.to_dict() for embed in message.embeds],
-                indent=4, ensure_ascii=True
-            ),
-            "attachment": json.dumps(
-                [attachment.url for attachment in message.attachments],
-                indent=4, ensure_ascii=True
-            ),
+            "embeds": self.to_json([embed.to_dict() for embed in message.embeds]),
+            "attachment": self.to_json([attachment.url for attachment in message.attachments]),
             "timestamp": message.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "bot": message.author.bot
-        }, key=str(message.id))
+            "bot": author.bot
+        }
+
+        if len(message.stickers) > 0:
+            fetch_stickers = [await sticker.fetch() for sticker in message.stickers]
+            data.update({
+                "stickers": self.to_json([
+                    sticker.url for sticker in message.stickers
+                ]),
+                "stickers_type": self.to_json([
+                    "Guild" if isinstance(sticker, discord.GuildSticker) else "Standard" for sticker in fetch_stickers
+                ])
+            })
+        database.set_data("message", data=data, key=str(message.id))
         return
 
 

@@ -77,11 +77,11 @@ class Database:
         connect.close()
         return bool(tf)
 
-    def set_data(self, table: str, datas: dict, key: str = None):
-        setup = [name for name in datas.keys()]
+    def set_data(self, table: str, data: dict, key: str = None):
+        setup = [name for name in data.keys()]
         args = []
-        for data in datas.keys():
-            args.append(datas.get(data))
+        for d in data.keys():
+            args.append(data.get(d))
         args.append(key or self.guild.id)
         connect = get_database()
         cur = connect.cursor(pymysql.cursors.DictCursor)
