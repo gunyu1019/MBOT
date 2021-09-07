@@ -29,7 +29,7 @@ from typing import Union, List, Dict
 
 from config.config import parser
 from module.interaction import SlashContext, ComponentsContext
-from module.message import Message, MessageCommand
+from module.message import Message, MessageCommand, MessageDelete
 from module.commands import Command
 from process.discord_exception import inspection
 from utils.directory import directory
@@ -146,6 +146,10 @@ class SocketReceive(commands.Cog):
             channel, _ = getattr(state, "_get_guild_channel")(data)
             message = Message(state=state, data=data, channel=channel)
             state.dispatch('interaction_message_update', message)
+            return
+        elif t == "MESSAGE_DELETE":
+            message = MessageDelete(state=state, data=data)
+            state.dispatch('interaction_message_delete', message)
             return
         return
 

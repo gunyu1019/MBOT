@@ -102,3 +102,56 @@ class Database:
         return bool(
             getattr(self.get_data("guildSetting"), name, 0)
         )
+
+    def get_message(self, message_id: int, channel_id: int):
+        connect = get_database()
+        cur = connect.cursor(pymysql.cursors.DictCursor)
+        sql_command = pymysql.escape_string("select * from message where id=%s and channel_id=%s")
+        cur.execute(sql_command, (message_id, channel_id))
+        result = cur.fetchone()
+        connect.close()
+        return result
+
+    @staticmethod
+    def check_message(message_id: int, channel_id: int):
+        connect = get_database()
+        cur = connect.cursor(pymysql.cursors.DictCursor)
+        sql_command = pymysql.escape_string(
+            "select EXISTS (select * from message where id=%s and channel_id=%s) as success"
+        )
+        cur.execute(sql_command, (message_id, channel_id))
+        tf = cur.fetchone().get('success', False)
+        connect.close()
+        return bool(tf)
+
+    def set_message(self, data: dict, message_id: int, channel_id: int):
+        setup = [name for name in data.keys()]
+        args = []
+
+        for d in data.keys():
+            args.append(data.get(d))
+        args.extend([message_id, channel_id])
+        connect = get_database()
+        cur = connect.cursor(pymysql.cursors.DictCursor)
+        if self.check_message(message_id=message_id, channel_id=channel_id):
+            _setup = [f"{name}=%s" for name in setup]
+            sql_command = pymysql.escape_string(
+                f"update message set {', '.join(_setup)} where id=%s and channel_id=%s"
+            )
+        else:
+            sql_command = pymysql.escape_string(
+                f"insert into message({', '.join(setup)}, id, channel_id) value (%s{', %s' * (len(args) -1 )})"
+            )
+        cur.execute(sql_command, tuple(args))
+        connect.commit()
+        connect.close()
+
+    def delete_message(self, message_id: int, channel_id: int):
+        if not self.check_message(message_id=message_id, channel_id=channel_id):
+            return
+        connect = get_database()
+        cur = connect.cursor(pymysql.cursors.DictCursor)
+        sql_command = pymysql.escape_string("delete from message where id=%s and channel_id=%s")
+        cur.execute(sql_command, (message_id, channel_id))
+        connect.commit()
+        connect.close()

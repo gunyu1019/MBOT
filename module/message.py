@@ -181,6 +181,23 @@ class Message(discord.Message):
         return
 
 
+class MessageDelete:
+    def __init__(self, data: dict, state: ConnectionState):
+        self.id = data["id"]
+        self.channel_id = int(data["channel_id"])
+        self.guild_id = int(data.get("guild_id"))
+
+        self._state = state
+
+    @property
+    def guild(self):
+        return getattr(self._state, "_get_guild")(int(self.guild_id))
+
+    @property
+    def channel(self):
+        return self._state.get_channel(self.channel_id)
+
+
 class MessageCommand(Message):
     def __init__(
             self,

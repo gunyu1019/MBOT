@@ -6,7 +6,7 @@ import asyncio
 import discord
 from discord.ext import commands
 
-from module.message import Message
+from module.message import Message, MessageDelete
 from utils.database import Database
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,6 @@ class StatisticsReceive(commands.Cog):
 
         author = message.author
         data = {
-            "channel_id": message.channel.id,
             "guild_id": message.guild.id,
             "author_id": author.id,
             "author_name": author.name,
@@ -54,7 +53,7 @@ class StatisticsReceive(commands.Cog):
         if message.webhook_id is not None:
             data["webhook_id"] = message.webhook_id
 
-        database.set_data("message", data=data, key=str(message.id))
+        database.set_message(data=data, message_id=message.id, channel_id=message.channel.id)
         return
 
     @commands.Cog.listener()
@@ -64,12 +63,10 @@ class StatisticsReceive(commands.Cog):
             self.bot.dispatch("logging_message_update", before=None, after=message)
             return
 
-        before_data = database.get_data("message", key=str(message.id))
-        self.bot.dispatch("logging_message_update", before=before_data, after=message)
+        cached_message = database.get_message(message_id=message.id, channel_id=message.channel.id)
+        self.bot.dispatch("logging_message_update", before=cached_message, after=message)
 
-        data = {
-            "channel_id": message.channel.id
-        }
+        data = {}
 
         if message.edited_at is not None:
             data["edited_timestamp"] = message.edited_at.strftime("%Y-%m-%d %H:%M:%S")
@@ -96,7 +93,19 @@ class StatisticsReceive(commands.Cog):
                         "Guild" if isinstance(sticker, discord.GuildSticker) else "Standard" for sticker in fetch_stickers
                     ])
                 })
-        database.set_data("message", data=data, key=str(message.id))
+        database.set_message(data=data, message_id=message.id, channel_id=message.channel.id)
+        return
+
+    @commands.Cog.listener()
+    async def on_interaction_message_delete(self, message: MessageDelete):
+        database = Database(bot=self.bot, guild=message.guild)
+        if not database.get_activation("statistics"):
+            self.bot.dispatch("logging_message_delete", message=None, raw=message)
+            return
+
+        cached_message = database.get_message(message_id=message.id, channel_id=message.channel.id)
+        self.bot.dispatch("logging_message_delete", messaeg=cached_message, raw=message)
+        database.delete_message(message_id=message.id, channel_id=message.channel.id)
         return
 
 
