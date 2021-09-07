@@ -30,7 +30,7 @@ def get_prefix(bot, ctx):
     guild = ctx.guild
     if guild:
         guild_st = Database(bot=bot, guild=guild)
-        if guild_st.check_data("guildSetting"):
+        if guild_st.check_data(table="guildSetting"):
             result = guild_st.get_data("guildSetting").prefix
         else:
             result = default_prefixes[0]
@@ -42,5 +42,5 @@ def get_prefix(bot, ctx):
 def set_prefix(bot, guild, prefix):
     if guild:
         guild_st = Database(bot=bot, guild=guild)
-        guild_st.set_data(table="Database", datas={"prefix": prefix})
+        guild_st.set_data(table="guildSetting", data={"prefix": prefix})
     return

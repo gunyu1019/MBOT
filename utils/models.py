@@ -106,3 +106,104 @@ class WelcomeMessage(DatabaseModel):
     @property
     def leave_channel(self) -> discord.TextChannel:
         return self.guild.get_channel(self.leave_channel_id)
+
+
+class Logging(DatabaseModel):
+    def __init__(self, data: dict, bot: discord.Client):
+        super().__init__(data, bot)
+        self.data = data
+        self.bot = bot
+
+        self.message_log_channel_id = data.get("message_log_id")
+        self.warning_log_channel_id = data.get("warning_log_id", self.message_log_channel_id)
+        self.channel_log_channel_id = data.get("channel_log_id", self.message_log_channel_id)
+        self.voice_log_channel_id = data.get("voice_log_id", self.message_log_channel_id)
+        self.guild_log_channel_id = data.get("guild_log_id", self.message_log_channel_id)
+        self.member_log_channel_id = data.get("member_log_id", self.message_log_channel_id)
+
+    @property
+    def warning_log_channel(self) -> discord.TextChannel:
+        return self.guild.get_channel(self.warning_log_channel_id) or self.message_log_channel
+
+    @property
+    def channel_log_channel(self) -> discord.TextChannel:
+        return self.guild.get_channel(self.channel_log_channel_id) or self.message_log_channel
+
+    @property
+    def message_log_channel(self) -> discord.TextChannel:
+        return self.guild.get_channel(self.message_log_channel_id)
+
+    @property
+    def voice_log_channel(self) -> discord.TextChannel:
+        return self.guild.get_channel(self.voice_log_channel_id) or self.message_log_channel
+
+    @property
+    def guild_log_channel(self) -> discord.TextChannel:
+        return self.guild.get_channel(self.guild_log_channel_id) or self.message_log_channel
+
+    @property
+    def member_log_channel(self) -> discord.TextChannel:
+        return self.guild.get_channel(self.member_log_channel_id) or self.message_log_channel
+
+    def __getattr__(self, item):
+        return bool(self.data.get(item))
+
+
+class DatabaseMessage(DatabaseModel):
+    def __init__(self, bot: discord.Client, data: dict, guild=None):
+        super().__init__(data=data, bot=bot)
+        self._guild = guild
+        self.bot = bot
+        self.data = data
+
+        self.id = data['id']
+        self.channel_id = data.get('channel_id')
+        self.guild_id = data.get('guild_id')
+        self.webhook_id = data.get('webhook_id')
+
+        self.content = data.get("content")
+
+        self.author_id = data.get("author_id")
+        self.author_name = data.get("author_name")
+        self.author_tag = data.get("author_tag")
+        self.author_avatar = data.get("author_avatar")
+        self.author_bot = data.get("bot")
+
+        self.pinned = data.get("pin", False)
+
+        self.created_at = data["timestamp"]
+        self.edited_at = data.get("edited_timestamp")
+
+    @property
+    def channel(self) -> discord.TextChannel:
+        return self.guild.get_channel(self.channel_id) or self.guild.get_thread(self.channel_id)
+
+    @property
+    def embeds(self):
+        return [discord.Embed.from_dict(embed) for embed in self.convert_dict(self.data.get("embeds", "[]"))]
+
+    @property
+    def attachments(self):
+        return self.convert_dict(self.data.get("attachment", "[]"))
+
+    @property
+    def author(self):
+        return self.guild.get_member(self.author_id) or self.bot.get_user(self.author_id)
+
+    @property
+    def guild(self) -> discord.Guild:
+        return self._guild or self.bot.get_guild(self.guild_id)
+
+    @property
+    def stickers(self):
+        return [DatabaseSticker({
+            "url": value,
+            "type": self.convert_dict(self.data.get("stickers_type"))[index]
+        }) for index, value in enumerate(self.convert_dict(self.data.get("stickers")))
+        ]
+
+
+class DatabaseSticker:
+    def __init__(self, data):
+        self.url = data['url']
+        self.type = data['type']

@@ -27,6 +27,7 @@ from typing import Union
 
 from config.config import parser
 from module.interaction import SlashContext, Message
+from utils.database import Database
 from utils.prefix import set_prefix
 from utils import token
 
@@ -59,8 +60,6 @@ class Events(commands.Cog):
         logger.info(f"방목록: \n{answer}\n방의 종합 멤버:{total}명")
 
         logger.info(f'DBSkr이 실행됩니다.')
-        dbs = logging.getLogger("DBSkr")
-        dbs.setLevel(logging.DEBUG)
         DBSkr.Client(
             self.bot,
             koreanbots_token=token.koreanBots_token,
@@ -68,6 +67,11 @@ class Events(commands.Cog):
             uniquebots_token=token.uniqueBots_token,
             autopost=False
         )
+        logger.info(f'등록되지 않은 서버를 확인합니다.')
+        cached_guilds = Database.guild_lists()
+        for guild in self.bot.guilds:
+            if guild.id not in cached_guilds:
+                self.bot.dispatch('guild_join', guild=guild)
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
@@ -89,7 +93,7 @@ class Events(commands.Cog):
     @commands.Cog.listener()
     async def on_command(self, ctx: Union[SlashContext, Message]):
         if ctx.guild is not None:
-            logger_command.info(f"({ctx.guild} | {ctx.channel} | {ctx.author}) {ctx.messa.content}")
+            logger_command.info(f"({ctx.guild} | {ctx.channel} | {ctx.author}) {ctx.content}")
         else:
             logger_command.info(f"(DM채널 | {ctx.author}) {ctx.content}")
         return

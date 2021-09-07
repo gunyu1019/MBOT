@@ -2,7 +2,6 @@ import json
 import logging
 from typing import Union
 
-import asyncio
 import discord
 from discord.ext import commands
 
@@ -33,6 +32,7 @@ class StatisticsReceive(commands.Cog):
             "author_id": author.id,
             "author_name": author.name,
             "author_tag": author.discriminator,
+            "author_avatar": author.avatar.key,
             "content": message.content,
             "embeds": self.to_json([embed.to_dict() for embed in message.embeds]),
             "attachment": self.to_json([attachment.url for attachment in message.attachments]),
@@ -104,7 +104,7 @@ class StatisticsReceive(commands.Cog):
             return
 
         cached_message = database.get_message(message_id=message.id, channel_id=message.channel.id)
-        self.bot.dispatch("logging_message_delete", messaeg=cached_message, raw=message)
+        self.bot.dispatch("logging_message_delete", message=cached_message, raw=message)
         database.delete_message(message_id=message.id, channel_id=message.channel.id)
         return
 

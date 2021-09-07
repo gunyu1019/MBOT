@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with PUBG BOT.  If not, see <http://www.gnu.org/licenses/>.
 """
-
+import discord
 import pymysql
 import logging
 from config.config import parser
@@ -57,35 +57,64 @@ class Database:
                 return models.WelcomeMessage(data, self.bot)
             elif table == "guildSetting":
                 return models.GuildSetting(data, self.bot)
+            elif table == "logging":
+                return models.Logging(data, self.bot)
         return data
 
-    def get_data(self, table: str, key: str = None):
+    def init_data(self, table, connection: pymysql.Connection = None):
+        if connection is None:
+            connect = get_database()
+        else:
+            connect = connection
         connect = get_database()
         cur = connect.cursor(pymysql.cursors.DictCursor)
+        sql_command = pymysql.escape_string(f"insert into {table}(id) value (%s)")
+        cur.execute(sql_command, self.guild.id)
+        connect.commit()
+        if connection is None:
+            connect.close()
+        return
+
+    def get_data(self, table: str, key: str = None, connection: pymysql.Connection = None):
+        if connection is None:
+            connect = get_database()
+        else:
+            connect = connection
+        cur = connect.cursor(pymysql.cursors.DictCursor)
         sql_command = pymysql.escape_string(f"select * from {table} where id=%s")
+        if key is None and not self.check_data(table=table):
+            self.init_data(table=table, connection=connect)
         cur.execute(sql_command, key or self.guild.id)
         result = cur.fetchone()
-        connect.close()
+        if connection is None:
+            connect.close()
         return self._get_model(result, table)
 
-    def check_data(self, table: str, key: str = None):
-        connect = get_database()
+    def check_data(self, table: str, key: str = None, connection: pymysql.Connection = None):
+        if connection is None:
+            connect = get_database()
+        else:
+            connect = connection
         cur = connect.cursor(pymysql.cursors.DictCursor)
         sql_command = pymysql.escape_string(f"select EXISTS (select * from {table} where id=%s) as success")
         cur.execute(sql_command, key or self.guild.id)
         tf = cur.fetchone().get('success', False)
-        connect.close()
+        if connection is None:
+            connect.close()
         return bool(tf)
 
-    def set_data(self, table: str, data: dict, key: str = None):
+    def set_data(self, table: str, data: dict, key: str = None, connection: pymysql.Connection = None):
         setup = [name for name in data.keys()]
         args = []
         for d in data.keys():
             args.append(data.get(d))
         args.append(key or self.guild.id)
-        connect = get_database()
+        if connection is None:
+            connect = get_database()
+        else:
+            connect = connection
         cur = connect.cursor(pymysql.cursors.DictCursor)
-        if self.check_data(table=table, key=key):
+        if self.check_data(table=table, key=key, connection=connect):
             _setup = [f"{name}=%s" for name in setup]
             sql_command = pymysql.escape_string(
                 f"update {table} set {', '.join(_setup)} where id=%s"
@@ -96,21 +125,13 @@ class Database:
             )
         cur.execute(sql_command, tuple(args))
         connect.commit()
-        connect.close()
+        if connection is None:
+            connect.close()
 
     def get_activation(self, name: str):
         return bool(
             getattr(self.get_data("guildSetting"), name, 0)
         )
-
-    def get_message(self, message_id: int, channel_id: int):
-        connect = get_database()
-        cur = connect.cursor(pymysql.cursors.DictCursor)
-        sql_command = pymysql.escape_string("select * from message where id=%s and channel_id=%s")
-        cur.execute(sql_command, (message_id, channel_id))
-        result = cur.fetchone()
-        connect.close()
-        return result
 
     @staticmethod
     def check_message(message_id: int, channel_id: int):
@@ -123,6 +144,15 @@ class Database:
         tf = cur.fetchone().get('success', False)
         connect.close()
         return bool(tf)
+
+    def get_message(self, message_id: int, channel_id: int):
+        connect = get_database()
+        cur = connect.cursor(pymysql.cursors.DictCursor)
+        sql_command = pymysql.escape_string("select * from message where id=%s and channel_id=%s")
+        cur.execute(sql_command, (message_id, channel_id))
+        result = cur.fetchone()
+        connect.close()
+        return models.DatabaseMessage(bot=self.bot, data=result, guild=self.guild)
 
     def set_message(self, data: dict, message_id: int, channel_id: int):
         setup = [name for name in data.keys()]
@@ -155,3 +185,13 @@ class Database:
         cur.execute(sql_command, (message_id, channel_id))
         connect.commit()
         connect.close()
+
+    @staticmethod
+    def guild_lists():
+        connect = get_database()
+        cur = connect.cursor(pymysql.cursors.DictCursor)
+        sql_command = pymysql.escape_string(f"select id from guildSetting")
+        cur.execute(sql_command)
+        guilds = cur.fetchall()
+        connect.close()
+        return [guild.get("id", 0) for guild in guilds]

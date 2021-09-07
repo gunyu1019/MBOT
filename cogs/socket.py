@@ -144,6 +144,9 @@ class SocketReceive(commands.Cog):
             return
         elif t == "MESSAGE_UPDATE":
             channel, _ = getattr(state, "_get_guild_channel")(data)
+            if "attachments" not in data:
+                data["attachments"] = []
+                # Issue 대응 예정
             message = Message(state=state, data=data, channel=channel)
             state.dispatch('interaction_message_update', message)
             return
