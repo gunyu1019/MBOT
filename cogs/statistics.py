@@ -1,18 +1,12 @@
 import json
 import logging
-import os
+from typing import Union
 
 import discord
 from discord.ext import commands
-from typing import Union, List
 
-from config.config import parser
-from module.interaction import ComponentsContext, InteractionContext
-from module.message import Message, MessageSendable
-from utils.convert import Convert
+from module.message import Message
 from utils.database import Database
-from utils.directory import directory
-from utils.models import Ticket
 
 logger = logging.getLogger(__name__)
 DBS = None
@@ -56,6 +50,9 @@ class StatisticsReceive(commands.Cog):
                     "Guild" if isinstance(sticker, discord.GuildSticker) else "Standard" for sticker in fetch_stickers
                 ])
             })
+        if message.webhook_id is not None:
+            data["webhook_id"] = message.webhook_id
+
         database.set_data("message", data=data, key=str(message.id))
         return
 

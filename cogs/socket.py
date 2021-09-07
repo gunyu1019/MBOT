@@ -29,7 +29,7 @@ from typing import Union, List, Dict
 
 from config.config import parser
 from module.interaction import SlashContext, ComponentsContext
-from module.message import Message
+from module.message import Message, MessageCommand
 from module.commands import Command
 from process.discord_exception import inspection
 from utils.directory import directory
@@ -138,9 +138,12 @@ class SocketReceive(commands.Cog):
         elif t == "MESSAGE_CREATE":
             channel, _ = getattr(state, "_get_guild_channel")(data)
             message = Message(state=state, data=data, channel=channel)
+            command = MessageCommand(state=state, data=data, channel=channel)
             state.dispatch('interaction_message', message)
-            state.dispatch('interaction_command', message)
+            state.dispatch('interaction_command', command)
             return
+        elif t == "MESSAGE_UPDATE":
+            print(data)
         return
 
 

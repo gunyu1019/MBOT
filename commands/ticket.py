@@ -24,7 +24,7 @@ from config.config import parser
 from module import commands as _command
 from module.interaction import SlashContext
 from module.components import ActionRow
-from module.message import MessageSendable, Message
+from module.message import MessageSendable, MessageCommand
 from utils.convert import Convert
 from utils.database import Database
 
@@ -37,7 +37,7 @@ class Command:
         self.warning_color = int(parser.get("Color", "warning"), 16)
 
     @_command.command(name="티켓", permission=1, interaction=False)
-    async def ticket(self, ctx: Union[SlashContext, Message]):
+    async def ticket(self, ctx: Union[SlashContext, MessageCommand]):
         option1 = None
         print(ctx.options)
         if isinstance(ctx, SlashContext):

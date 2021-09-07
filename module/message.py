@@ -101,18 +101,6 @@ class Message(discord.Message):
         self.components = from_payload(data.get("components", []))
         self.http = HttpClient(http=self._state.http)
 
-        options = self.content.split()
-
-        if len(options) >= 1:
-            self.name = options[0]
-        else:
-            self.name = None
-
-        if len(options) >= 2:
-            self.options = self.content.split()[1:]
-        else:
-            self.options = []
-
     @property
     def prefix(self):
         return get_prefix(None, self)[0]
@@ -191,6 +179,29 @@ class Message(discord.Message):
             for file in files:
                 file.close()
         return
+
+
+class MessageCommand(Message):
+    def __init__(
+            self,
+            *,
+            state: ConnectionState,
+            channel: Union[discord.TextChannel, discord.DMChannel, discord.GroupChannel],
+            data: dict
+    ):
+        super().__init__(state=state, channel=channel, data=data)
+
+        options = self.content.split()
+
+        if len(options) >= 1:
+            self.name = options[0]
+        else:
+            self.name = None
+
+        if len(options) >= 2:
+            self.options = self.content.split()[1:]
+        else:
+            self.options = []
 
 
 class MessageSendable:
