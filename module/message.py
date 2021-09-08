@@ -24,7 +24,9 @@ SOFTWARE.
 import discord
 
 from discord.state import ConnectionState
-from typing import List, Union
+from discord.enums import try_enum
+from typing import List, Union, Optional
+from datetime import datetime
 
 from module.components import ActionRow, Button, Selection, from_payload
 from module.errors import InvalidArgument
@@ -274,3 +276,51 @@ class MessageSendable:
             for i in files:
                 i.close()
         return ret
+
+
+class MessageEdited(MessageSendable):
+    def __init__(
+            self,
+            *,
+            state: ConnectionState,
+            channel: Union[discord.TextChannel, discord.DMChannel, discord.GroupChannel],
+            data: dict
+    ):
+        self._state: ConnectionState = state
+        self.id: int = int(data['id'])
+        self.webhook_id: Optional[int] = getattr(discord.utils, "_get_as_snowflake")(data, 'webhook_id')
+        self.reactions: List[discord.Reaction] = [discord.Reaction(message=self, data=d) for d in data.get('reactions', [])]
+        self.attachments: List[discord.Attachment] = [discord.Attachment(data=a, state=self._state) for a in data.get('attachments', [])]
+        self.embeds: List[discord.Embed] = [discord.Embed.from_dict(a) for a in data['embeds']]
+        self.application: Optional[dict] = data.get('application')
+        self.activity: Optional[dict] = data.get('activity')
+        self.channel = channel
+        self._edited_timestamp: Optional[datetime] = discord.utils.parse_time(data.get('edited_timestamp'))
+        self.type: discord.MessageType = try_enum(discord.MessageType, data.get('type'))
+        self.pinned: bool = data.get('pinned', False)
+        self.flags: discord.MessageFlags = getattr(discord.MessageFlags, "_from_value")(data.get('flags', 0))
+        self.mention_everyone: bool = data.get('mention_everyone')
+        self.tts: bool = data.get('tts', False)
+        self.content: str = data.get('content')
+        self.nonce: Optional[Union[int, str]] = data.get('nonce')
+        self.stickers: List[discord.StickerItem] = [discord.StickerItem(data=d, state=state) for d in data.get('sticker_items', [])]
+        self.components = from_payload(data.get("components", []))
+        super().__init__(state=self._state, channel=self.channel)
+
+        if getattr(channel, "guild") is not None:
+            self.guild = channel.guild
+        else:
+            self.guild = getattr(state, "_get_guild")(getattr(discord.utils, "_get_as_snowflake")(data, 'guild_id'))
+
+    @property
+    def created_at(self) -> datetime:
+        return discord.utils.snowflake_time(self.id)
+
+    @property
+    def edited_at(self) -> Optional[datetime]:
+        return self._edited_timestamp
+
+    @property
+    def jump_url(self) -> str:
+        guild_id = getattr(self.guild, 'id', '@me')
+        return f'https://discord.com/channels/{guild_id}/{self.channel.id}/{self.id}'

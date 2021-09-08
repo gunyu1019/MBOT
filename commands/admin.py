@@ -77,7 +77,7 @@ class Command:
         try:
             fn_name = "__eval"
             cmd = cmd.strip("` ")
-            cmd = "\n".join(f"    {i}" for i in cmd.splitlines())
+            cmd = "\n".join(f"\n    {i}" for i in cmd.splitlines())
             body = f"async def {fn_name}():{cmd}"
             parsed = ast.parse(body)
             body = parsed.body[0].body

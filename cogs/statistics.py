@@ -5,7 +5,7 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from module.message import Message, MessageDelete
+from module.message import Message, MessageEdited, MessageDelete
 from utils.database import Database
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class StatisticsReceive(commands.Cog):
 
     @staticmethod
     def to_json(data: Union[dict, list]):
-        return json.dumps(data, indent=4, ensure_ascii=True)
+        return json.dumps(data, indent=4, ensure_ascii=False)
 
     @commands.Cog.listener()
     async def on_interaction_message(self, message: Message):
@@ -43,9 +43,11 @@ class StatisticsReceive(commands.Cog):
         if len(message.stickers) > 0:
             fetch_stickers = [await sticker.fetch() for sticker in message.stickers]
             data.update({
-                "stickers": self.to_json([
-                    sticker.url for sticker in message.stickers
-                ]),
+                "stickers": self.to_json([{
+                    "name": sticker.name,
+                    "id": sticker.id,
+                    "url": sticker.url
+                } for sticker in message.stickers]),
                 "stickers_type": self.to_json([
                     "Guild" if isinstance(sticker, discord.GuildSticker) else "Standard" for sticker in fetch_stickers
                 ])
@@ -57,7 +59,7 @@ class StatisticsReceive(commands.Cog):
         return
 
     @commands.Cog.listener()
-    async def on_interaction_message_update(self, message: Message):
+    async def on_interaction_message_update(self, message: MessageEdited):
         database = Database(bot=self.bot, guild=message.guild)
         if not database.get_activation("statistics"):
             self.bot.dispatch("logging_message_update", before=None, after=message)
@@ -71,8 +73,6 @@ class StatisticsReceive(commands.Cog):
         if message.edited_at is not None:
             data["edited_timestamp"] = message.edited_at.strftime("%Y-%m-%d %H:%M:%S")
 
-        if message.content is not None:
-            data['content'] = message.content
         if message.content is not None:
             data['content'] = message.content
         if message.embeds is not None:

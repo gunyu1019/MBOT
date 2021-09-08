@@ -128,7 +128,9 @@ class Database:
         if connection is None:
             connect.close()
 
-    def get_activation(self, name: str):
+    def get_activation(self, name: str) -> bool:
+        if self.guild is None:
+            return False
         return bool(
             getattr(self.get_data("guildSetting"), name, 0)
         )

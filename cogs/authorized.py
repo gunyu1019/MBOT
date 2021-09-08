@@ -218,6 +218,11 @@ class AuthorizedReceived(commands.Cog):
         self.bot.dispatch(event_name="authorized", member=member)
         return
 
+    @commands.command(name="test_robot")
+    async def test_robot(self, ctx):
+        await self.robot_check(member=ctx.author, mode=RobotCheckType.image)
+        return
+
     @commands.Cog.listener()
     async def on_authorized(self, member: discord.Member):
         database = Database(bot=self.bot, guild=member.guild)

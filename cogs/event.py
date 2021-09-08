@@ -92,10 +92,10 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command(self, ctx: Union[SlashContext, Message]):
-        if ctx.guild is not None:
-            logger_command.info(f"({ctx.guild} | {ctx.channel} | {ctx.author}) {ctx.content}")
-        else:
-            logger_command.info(f"(DM채널 | {ctx.author}) {ctx.content}")
+        # if ctx.guild is not None:
+        #     logger_command.info(f"({ctx.guild} | {ctx.channel} | {ctx.author}) {ctx.content}")
+        # else:
+        #     logger_command.info(f"(DM채널 | {ctx.author}) {ctx.content}")
         return
 
 

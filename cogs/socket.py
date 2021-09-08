@@ -29,7 +29,7 @@ from typing import Union, List, Dict
 
 from config.config import parser
 from module.interaction import SlashContext, ComponentsContext
-from module.message import Message, MessageCommand, MessageDelete
+from module.message import Message, MessageCommand, MessageDelete, MessageEdited
 from module.commands import Command
 from process.discord_exception import inspection
 from utils.directory import directory
@@ -144,10 +144,7 @@ class SocketReceive(commands.Cog):
             return
         elif t == "MESSAGE_UPDATE":
             channel, _ = getattr(state, "_get_guild_channel")(data)
-            if "attachments" not in data:
-                data["attachments"] = []
-                # Issue 대응 예정
-            message = Message(state=state, data=data, channel=channel)
+            message = MessageEdited(state=state, data=data, channel=channel)
             state.dispatch('interaction_message_update', message)
             return
         elif t == "MESSAGE_DELETE":

@@ -8,7 +8,7 @@ from datetime import datetime
 from pytz import timezone
 
 from config.config import parser
-from module.message import Message, MessageDelete, MessageSendable
+from module.message import MessageEdited, MessageDelete, MessageSendable
 from utils.database import Database
 from utils.models import DatabaseMessage
 
@@ -27,7 +27,7 @@ class LoggingReceive(commands.Cog):
         self.embed = discord.Embed(title="\U0001F5D2 {0} 로그", colour=self.color)
 
     @commands.Cog.listener()
-    async def on_logging_message_update(self, after: Message, before: DatabaseMessage = None):
+    async def on_logging_message_update(self, after: MessageEdited, before: DatabaseMessage = None):
         database = Database(bot=self.bot, guild=after.guild)
         if not database.get_activation("logging"):
             return
@@ -83,7 +83,8 @@ class LoggingReceive(commands.Cog):
                     embed.add_field(name="스티커", value=", ".join([
                         "[{1}]({0})".format(
                             sticker.url,
-                            "기본" if sticker.type == "Standard" else "서버"
+                            sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
+                            if sticker.id is not None else ""
                         ) for sticker in message.stickers
                     ]), inline=False)
                     if not image:

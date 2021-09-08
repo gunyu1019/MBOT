@@ -157,7 +157,7 @@ class DatabaseMessage(DatabaseModel):
         self.data = data
 
         self.id = data['id']
-        self.channel_id = data.get('channel_id')
+        self.channel_id = data['channel_id']
         self.guild_id = data.get('guild_id')
         self.webhook_id = data.get('webhook_id')
 
@@ -205,5 +205,7 @@ class DatabaseMessage(DatabaseModel):
 
 class DatabaseSticker:
     def __init__(self, data):
+        self.name = data.get('name')
+        self.id = data.get('id')
         self.url = data['url']
         self.type = data['type']
