@@ -140,6 +140,32 @@ class LoggingReceive(commands.Cog):
                                 if self.attachment_name(sticker.url) == "사진":
                                     embed.set_image(url=sticker.url)
                                     break
+                    elif len(after.stickers) == 0 and len(before.stickers) > 0:
+                        embed.add_field(name="스티커", value=", ".join([
+                            "[{1}]({0})".format(
+                                sticker.url,
+                                sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
+                                if sticker.id is not None else ""
+                            ) for sticker in before.stickers
+                        ]) + " (삭제됨)", inline=False)
+                        if not image:
+                            for attachment in before.stickers:
+                                if self.attachment_name(attachment) == "사진":
+                                    embed.set_image(url=attachment)
+                                    break
+                    elif len(after.stickers) > 0 and len(before.stickers) == 0:
+                        embed.add_field(name="스티커", value=", ".join([
+                            "[{1}]({0})".format(
+                                sticker.url,
+                                sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
+                                if sticker.id is not None else ""
+                            ) for sticker in after.stickers
+                        ]) + " (추가됨)", inline=False)
+                        if not image:
+                            for attachment in after.stickers:
+                                if self.attachment_name(attachment) == "사진":
+                                    embed.set_image(url=attachment)
+                                    break
                 embed.add_field(name="보낸 날짜", value="`{0}`".format(before.created_at), inline=True)
             elif cached_message is not None:
                 if cached_message.author.bot:
