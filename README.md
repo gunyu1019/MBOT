@@ -21,10 +21,10 @@ MBOT의 기능이 생각보다 다양하게 구성된 관게로 아래에 작업
       > 해당 기능은 사용자의 자율성을 침범한다고 판단하여, 취소하기로 하였습니다.
     * [ ] **~~CPC~~, CPG~~(Copy Paste Channel)~~, (Copy Paste Guild)** (3단계)<br/>
       채널과 서버를 보다 쉽게 복사할 수 있습니다. (백업기능)
-    * [ ] Auto Grant Role ▶ Authorize (1단계)<br/>
+    * [x] Auto Grant Role ▶ Authorize (1단계)<br/>
       자동적으로 역할을 부여하는 기능으로, “유저가 가입했을 때” 혹은 “특정 반응”을 눌렀을 때 부여하는 기능입니다.
       + 추가로 "인증" 기능을 도입하여 사전에 매크로를 차단합니다.
-    * [ ] Command Management Service (1단계)
+    * [x] Command Management Service (1단계)
     
 ### Project MBOT (v2)
 * [x] Welcome Message (1단계)
