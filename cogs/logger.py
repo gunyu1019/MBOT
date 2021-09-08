@@ -177,9 +177,98 @@ class LoggingReceive(commands.Cog):
                     ),
                     inline=False
                 )
+                if after.content is not None and after.content != cached_message.content:
+                    embed.add_field(name="변경 전 내용", value="{0}".format(cached_message.content), inline=False)
+                    embed.add_field(name="변경 후 내용", value="{0}".format(after.content), inline=False)
+                if after.attachments != cached_message.attachments:
+                    if len(after.attachments) > 0 and len(cached_message.attachments) > 0:
+                        embed.add_field(name="파일", value=", ".join([
+                            "[{1}]({0})".format(
+                                attachment,
+                                self.attachment_name(attachment.filename)
+                            ) for attachment in cached_message.attachments
+                        ]) + " → " + ", ".join([
+                            "[{1}]({0})".format(
+                                attachment,
+                                self.attachment_name(attachment)
+                            ) for attachment in after.attachments
+                        ]), inline=False)
+                        for attachment in after.attachments:
+                            if self.attachment_name(attachment) == "사진":
+                                embed.set_image(url=attachment)
+                                image = True
+                                break
+                    elif len(after.attachments) == 0 and len(cached_message.attachments) > 0:
+                        embed.add_field(name="파일", value=", ".join([
+                            "[{1}]({0})".format(
+                                attachment,
+                                self.attachment_name(attachment.filename)
+                            ) for attachment in cached_message.attachments
+                        ]) + " (삭제됨)", inline=False)
+                        for attachment in cached_message.attachments:
+                            if self.attachment_name(attachment.filename) == "사진":
+                                embed.set_image(url=attachment.url)
+                                image = True
+                                break
+                    elif len(after.attachments) > 0 and len(cached_message.attachments) == 0:
+                        embed.add_field(name="파일", value=", ".join([
+                            "[{1}]({0})".format(
+                                attachment,
+                                self.attachment_name(attachment)
+                            ) for attachment in after.attachments
+                        ]) + " (추가됨)", inline=False)
+                        for attachment in after.attachments:
+                            if self.attachment_name(attachment) == "사진":
+                                embed.set_image(url=attachment)
+                                image = True
+                                break
+                if after.stickers != cached_message.stickers:
+                    if len(after.stickers) > 0 and len(cached_message.stickers) > 0:
+                        embed.add_field(name="스티커", value=", ".join([
+                            "[{1}]({0})".format(
+                                sticker.url,
+                                sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
+                                if sticker.id is not None else ""
+                            ) for sticker in cached_message.stickers
+                        ]) + " → " + ", ".join([
+                            "[{1}]({0})".format(
+                                sticker.url,
+                                sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
+                                if sticker.id is not None else ""
+                            ) for sticker in after.stickers
+                        ]), inline=False)
+                        if not image:
+                            for sticker in after.stickers:
+                                if self.attachment_name(sticker.url) == "사진":
+                                    embed.set_image(url=sticker.url)
+                                    break
+                    elif len(after.stickers) == 0 and len(cached_message.stickers) > 0:
+                        embed.add_field(name="스티커", value=", ".join([
+                            "[{1}]({0})".format(
+                                sticker.url,
+                                sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
+                                if sticker.id is not None else ""
+                            ) for sticker in cached_message.stickers
+                        ]) + " (삭제됨)", inline=False)
+                        if not image:
+                            for stickers in cached_message.stickers:
+                                if self.attachment_name(stickers.url) == "사진":
+                                    embed.set_image(url=stickers.url)
+                                    break
+                    elif len(after.stickers) > 0 and len(cached_message.stickers) == 0:
+                        embed.add_field(name="스티커", value=", ".join([
+                            "[{1}]({0})".format(
+                                sticker.url,
+                                sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
+                                if sticker.id is not None else ""
+                            ) for sticker in after.stickers
+                        ]) + " (추가됨)", inline=False)
+                        if not image:
+                            for stickers in after.stickers:
+                                if self.attachment_name(stickers) == "사진":
+                                    embed.set_image(url=stickers)
+                                    break
                 embed.add_field(name="보낸 날짜", value="`{0}`".format(cached_message.created_at), inline=True)
-                if cached_message.edited_at is not None:
-                    embed.add_field(name="수정 날짜", value="`{0}`".format(cached_message.edited_at), inline=True)
             else:
                 return
             if after.edited_at is not None:
