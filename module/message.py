@@ -21,6 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import inspect
 import discord
 
 from discord.state import ConnectionState
@@ -286,41 +287,86 @@ class MessageEdited(MessageSendable):
             channel: Union[discord.TextChannel, discord.DMChannel, discord.GroupChannel],
             data: dict
     ):
+        super().__init__(state=state, channel=channel)
+        self._func = {}
         self._state: ConnectionState = state
+        self._data = data
+        for index, func in inspect.getmembers(MessageEdited):
+            if index.startswith("_handler_"):
+                self._func[index] = func
         self.id: int = int(data['id'])
-        self.webhook_id: Optional[int] = getattr(discord.utils, "_get_as_snowflake")(data, 'webhook_id')
-        self.reactions: List[discord.Reaction] = [discord.Reaction(message=self, data=d) for d in data.get('reactions', [])]
-        self.attachments: List[discord.Attachment] = [discord.Attachment(data=a, state=self._state) for a in data.get('attachments', [])]
-        self.embeds: List[discord.Embed] = [discord.Embed.from_dict(a) for a in data['embeds']]
-        self.application: Optional[dict] = data.get('application')
-        self.activity: Optional[dict] = data.get('activity')
         self.channel = channel
-        self._edited_timestamp: Optional[datetime] = discord.utils.parse_time(data.get('edited_timestamp'))
-        self.type: discord.MessageType = try_enum(discord.MessageType, data.get('type'))
-        self.pinned: bool = data.get('pinned', False)
-        self.flags: discord.MessageFlags = getattr(discord.MessageFlags, "_from_value")(data.get('flags', 0))
-        self.mention_everyone: bool = data.get('mention_everyone')
-        self.tts: bool = data.get('tts', False)
-        self.content: str = data.get('content')
-        self.nonce: Optional[Union[int, str]] = data.get('nonce')
-        self.stickers: List[discord.StickerItem] = [discord.StickerItem(data=d, state=state) for d in data.get('sticker_items', [])]
-        self.components = from_payload(data.get("components", []))
-        super().__init__(state=self._state, channel=self.channel)
 
-        if getattr(channel, "guild") is not None:
-            self.guild = channel.guild
-        else:
-            self.guild = getattr(state, "_get_guild")(getattr(discord.utils, "_get_as_snowflake")(data, 'guild_id'))
+    def __getattr__(self, item):
+        if "_handler_" + item in self._func.keys():
+            return getattr(self, "_handler_{0}".format(item))()
+        return self._data.get(item)
 
-    @property
-    def created_at(self) -> datetime:
+    def _handler_webhook_id(self) -> Optional[int]:
+        return getattr(discord.utils, "_get_as_snowflake")(self._data, 'webhook_id')
+
+    def _handler_reactions(self) -> List[discord.Reaction]:
+        return [
+            discord.Reaction(message=self, data=d) for d in self._data.get('reactions', [])
+        ]
+
+    def _handler_embed(self) -> List[discord.Embed]:
+        return [discord.Embed.from_dict(a) for a in self._data['embeds']]
+
+    def _handler_attachments(self) -> List[discord.Attachment]:
+        return [
+            discord.Attachment(data=a, state=self._state) for a in self._data.get('attachments', [])
+        ]
+
+    def _handler_type(self) -> discord.MessageType:
+        return try_enum(discord.MessageType, self._data.get('type'))
+
+    def _handler_flags(self) -> discord.MessageType:
+        return getattr(discord.MessageFlags, "_from_value")(self._data.get('flags', 0))
+
+    def _handler_stickers(self) -> List[discord.StickerItem]:
+        return [
+            discord.StickerItem(data=d, state=self._state) for d in self._data.get('sticker_items', [])
+        ]
+
+    def _handler_guild(self) -> Optional[discord.Guild]:
+        return getattr(self.channel, "guild", getattr(self._state, "_get_guild")(self._data.get('guild_id')))
+
+    def _handler_components(self) -> List[discord.StickerItem]:
+        return from_payload(self._data.get("components", []))
+
+    def _handler_created_at(self) -> datetime:
         return discord.utils.snowflake_time(self.id)
 
-    @property
-    def edited_at(self) -> Optional[datetime]:
-        return self._edited_timestamp
+    def _handler_edited_at(self) -> Optional[datetime]:
+        return discord.utils.parse_time(self._data.get('edited_timestamp'))
+
+    def _handler_author(self) -> Union[discord.Member, discord.User]:
+        author = self._state.store_user(self._data.get("author"))
+        if isinstance(self.guild, discord.Guild):
+            found = self.guild.get_member(self.author.id)
+            if found is not None:
+                author = found
+        return author
+
+    def _handle_mentions(self) -> List[Union[discord.Member, discord.User]]:
+        mentions = []
+        guild = self.guild
+        state = self._state
+        if not isinstance(guild, discord.Guild):
+            mentions = [state.store_user(m) for m in self._data.get('mentions', [])]
+        return mentions
+
+    def _handle_mention_roles(self) -> List[discord.Role]:
+        role_mentions = []
+        if isinstance(self.guild, discord.Guild):
+            for role_id in map(int, self._data.get('role_mentions', [])):
+                role = self.guild.get_role(role_id)
+                if role is not None:
+                    role_mentions.append(role)
+        return role_mentions
 
     @property
-    def jump_url(self) -> str:
+    def _handler_jump_url(self) -> str:
         guild_id = getattr(self.guild, 'id', '@me')
         return f'https://discord.com/channels/{guild_id}/{self.channel.id}/{self.id}'

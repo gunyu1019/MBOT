@@ -26,6 +26,9 @@ class StatisticsReceive(commands.Cog):
         if not database.get_activation("statistics"):
             return
 
+        if message.author.id == self.bot.user.id:
+            return
+
         author = message.author
         data = {
             "guild_id": message.guild.id,
@@ -63,6 +66,9 @@ class StatisticsReceive(commands.Cog):
         database = Database(bot=self.bot, guild=message.guild)
         if not database.get_activation("statistics"):
             self.bot.dispatch("logging_message_update", before=None, after=message)
+            return
+
+        if getattr(message.author, "id", 0) == self.bot.user.id:
             return
 
         cached_message = database.get_message(message_id=message.id, channel_id=message.channel.id)

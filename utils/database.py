@@ -154,7 +154,7 @@ class Database:
         cur.execute(sql_command, (message_id, channel_id))
         result = cur.fetchone()
         connect.close()
-        return models.DatabaseMessage(bot=self.bot, data=result, guild=self.guild)
+        return models.DatabaseMessage(bot=self.bot, data=result, guild=self.guild) if result is not None else None
 
     def set_message(self, data: dict, message_id: int, channel_id: int):
         setup = [name for name in data.keys()]
