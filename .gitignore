@@ -134,3 +134,4 @@ config/config.ini
 .idea/
 data/ticket.json
 data/ticket/
+debug_result.txt
