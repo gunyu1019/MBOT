@@ -151,6 +151,10 @@ class SocketReceive(commands.Cog):
             message = MessageDelete(state=state, data=data)
             state.dispatch('interaction_message_delete', message)
             return
+        elif t == "MESSAGE_DELETE_BULK":
+            message = MessageDelete(state=state, data=data, bulk=True)
+            state.dispatch('interaction_message_delete_bulk', message)
+            return
         return
 
 

@@ -197,8 +197,10 @@ class DatabaseMessage(DatabaseModel):
     @property
     def stickers(self):
         return [DatabaseSticker({
-            "url": value,
-            "type": self.convert_dict(self.data.get("stickers_type"))[index]
+            "type": self.convert_dict(self.data.get("stickers_type"))[index],
+            "name": value.get("name"),
+            "url": value.get("url"),
+            "id": value.get("id")
         }) for index, value in enumerate(self.convert_dict(self.data.get("stickers")))
         ]
 

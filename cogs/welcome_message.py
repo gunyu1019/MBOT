@@ -37,7 +37,7 @@ class WelcomeMessage(commands.Cog):
         database = Database(bot=self.bot, guild=member.guild)
         if not database.get_activation("welcome_message"):
             return
-        data = database.get_data("WelcomeMessage")
+        data = database.get_data("welcomeMessage")
 
         if data.welcome_message is not None:
             channel_id = data.welcome_channel_id

@@ -1,11 +1,11 @@
 import copy
 import logging
-from typing import Optional
+from datetime import datetime
+from typing import Optional, List, Union
 
 import discord
 from discord.ext import commands
 from discord.state import ConnectionState
-from datetime import datetime
 from pytz import timezone
 
 from config.config import parser
@@ -64,221 +64,131 @@ class LoggingReceive(commands.Cog):
         if log_activation.message_log_channel_id is not None:
             cached_message: Optional[discord.Message] = getattr(state, "_get_message")(after.id)
             embed = copy.deepcopy(self.embed)
+            image = False
+            if before is None:
+                before = cached_message
+
+            if before is None or \
+                (getattr(before, "author", 0) if isinstance(before, discord.Message)
+                    else before.author_id) == self.bot.user.id:
+                return
             embed.title = embed.title.format("메시지 수정")
-            if before is not None:
-                if after.author.bot:
-                    return
-                image = False
+            if before.content != "" and before.content is not None:
+                embed.add_field(name="변경 전 내용", value="{0}".format(before.content), inline=True)
+            if after.content != "" and after.content is not None:
+                embed.add_field(name="변경 후 내용", value="{0}".format(after.content), inline=True)
+            embed.add_field(name="메시지 위치", value="[링크]({0})".format(after.jump_url), inline=True)
+            if isinstance(before, discord.Message):
+                embed.add_field(
+                    name="사용자", value="{0}#{1}({2})".format(
+                        before.author.name, before.author.discriminator, before.author.id
+                    ),
+                    inline=False
+                )
+            elif isinstance(before, DatabaseMessage):
                 embed.add_field(
                     name="사용자", value="{0}#{1}({2})".format(
                         before.author_name, before.author_tag, before.author_id
                     ),
                     inline=False
                 )
-                if after.content is not None and after.content != before.content:
-                    embed.add_field(name="변경 전 내용", value="{0}".format(before.content), inline=False)
-                    embed.add_field(name="변경 후 내용", value="{0}".format(after.content), inline=False)
-                if after.attachments != before.attachments:
-                    if len(after.attachments) > 0 and len(before.attachments) > 0:
-                        embed.add_field(name="파일", value=", ".join([
-                            "[{1}]({0})".format(
-                                attachment,
-                                self.attachment_name(attachment)
-                            ) for attachment in before.attachments
-                        ]) + " → " + ", ".join([
-                            "[{1}]({0})".format(
-                                attachment,
-                                self.attachment_name(attachment)
-                            ) for attachment in after.attachments
-                        ]), inline=False)
-                        for attachment in after.attachments:
-                            if self.attachment_name(attachment) == "사진":
-                                embed.set_image(url=attachment)
-                                image = True
-                                break
-                    elif len(after.attachments) == 0 and len(before.attachments) > 0:
-                        embed.add_field(name="파일", value=", ".join([
-                            "[{1}]({0})".format(
-                                attachment,
-                                self.attachment_name(attachment)
-                            ) for attachment in before.attachments
-                        ]) + " (삭제됨)", inline=False)
-                        for attachment in before.attachments:
-                            if self.attachment_name(attachment) == "사진":
-                                embed.set_image(url=attachment)
-                                image = True
-                                break
-                    elif len(after.attachments) > 0 and len(before.attachments) == 0:
-                        embed.add_field(name="파일", value=", ".join([
-                            "[{1}]({0})".format(
-                                attachment,
-                                self.attachment_name(attachment)
-                            ) for attachment in after.attachments
-                        ]) + " (추가됨)", inline=False)
-                        for attachment in after.attachments:
-                            if self.attachment_name(attachment) == "사진":
-                                embed.set_image(url=attachment)
-                                image = True
-                                break
-                if after.stickers != before.stickers:
-                    if len(after.stickers) > 0 and len(before.stickers) > 0:
-                        embed.add_field(name="스티커", value=", ".join([
-                            "[{1}]({0})".format(
-                                sticker.url,
-                                sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
-                                if sticker.id is not None else ""
-                            ) for sticker in before.stickers
-                        ]) + " → " + ", ".join([
-                            "[{1}]({0})".format(
-                                sticker.url,
-                                sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
-                                if sticker.id is not None else ""
-                            ) for sticker in after.stickers
-                        ]), inline=False)
-                        if not image:
-                            for sticker in after.stickers:
-                                if self.attachment_name(sticker.url) == "사진":
-                                    embed.set_image(url=sticker.url)
-                                    break
-                    elif len(after.stickers) == 0 and len(before.stickers) > 0:
-                        embed.add_field(name="스티커", value=", ".join([
-                            "[{1}]({0})".format(
-                                sticker.url,
-                                sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
-                                if sticker.id is not None else ""
-                            ) for sticker in before.stickers
-                        ]) + " (삭제됨)", inline=False)
-                        if not image:
-                            for attachment in before.stickers:
-                                if self.attachment_name(attachment) == "사진":
-                                    embed.set_image(url=attachment)
-                                    break
-                    elif len(after.stickers) > 0 and len(before.stickers) == 0:
-                        embed.add_field(name="스티커", value=", ".join([
-                            "[{1}]({0})".format(
-                                sticker.url,
-                                sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
-                                if sticker.id is not None else ""
-                            ) for sticker in after.stickers
-                        ]) + " (추가됨)", inline=False)
-                        if not image:
-                            for attachment in after.stickers:
-                                if self.attachment_name(attachment) == "사진":
-                                    embed.set_image(url=attachment)
-                                    break
-                embed.add_field(name="보낸 날짜", value="`{0}`".format(before.created_at), inline=True)
-            elif cached_message is not None:
-                if cached_message.author.bot:
-                    return
-                image = False
-                embed.add_field(
-                    name="사용자", value="{0}#{1}({2})".format(
-                        cached_message.author.name, cached_message.author.discriminator, cached_message.author.id
-                    ),
-                    inline=False
-                )
-                if after.content is not None and after.content != cached_message.content:
-                    embed.add_field(name="변경 전 내용", value="{0}".format(cached_message.content), inline=False)
-                    embed.add_field(name="변경 후 내용", value="{0}".format(after.content), inline=False)
-                if after.attachments != cached_message.attachments:
-                    if len(after.attachments) > 0 and len(cached_message.attachments) > 0:
-                        embed.add_field(name="파일", value=", ".join([
-                            "[{1}]({0})".format(
-                                attachment,
-                                self.attachment_name(attachment.filename)
-                            ) for attachment in cached_message.attachments
-                        ]) + " → " + ", ".join([
-                            "[{1}]({0})".format(
-                                attachment,
-                                self.attachment_name(attachment)
-                            ) for attachment in after.attachments
-                        ]), inline=False)
-                        for attachment in after.attachments:
-                            if self.attachment_name(attachment) == "사진":
-                                embed.set_image(url=attachment)
-                                image = True
-                                break
-                    elif len(after.attachments) == 0 and len(cached_message.attachments) > 0:
-                        embed.add_field(name="파일", value=", ".join([
-                            "[{1}]({0})".format(
-                                attachment,
-                                self.attachment_name(attachment.filename)
-                            ) for attachment in cached_message.attachments
-                        ]) + " (삭제됨)", inline=False)
-                        for attachment in cached_message.attachments:
-                            if self.attachment_name(attachment.filename) == "사진":
-                                embed.set_image(url=attachment.url)
-                                image = True
-                                break
-                    elif len(after.attachments) > 0 and len(cached_message.attachments) == 0:
-                        embed.add_field(name="파일", value=", ".join([
-                            "[{1}]({0})".format(
-                                attachment,
-                                self.attachment_name(attachment)
-                            ) for attachment in after.attachments
-                        ]) + " (추가됨)", inline=False)
-                        for attachment in after.attachments:
-                            if self.attachment_name(attachment) == "사진":
-                                embed.set_image(url=attachment)
-                                image = True
-                                break
-                if after.stickers != cached_message.stickers:
-                    if len(after.stickers) > 0 and len(cached_message.stickers) > 0:
-                        embed.add_field(name="스티커", value=", ".join([
-                            "[{1}]({0})".format(
-                                sticker.url,
-                                sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
-                                if sticker.id is not None else ""
-                            ) for sticker in cached_message.stickers
-                        ]) + " → " + ", ".join([
-                            "[{1}]({0})".format(
-                                sticker.url,
-                                sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
-                                if sticker.id is not None else ""
-                            ) for sticker in after.stickers
-                        ]), inline=False)
-                        if not image:
-                            for sticker in after.stickers:
-                                if self.attachment_name(sticker.url) == "사진":
-                                    embed.set_image(url=sticker.url)
-                                    break
-                    elif len(after.stickers) == 0 and len(cached_message.stickers) > 0:
-                        embed.add_field(name="스티커", value=", ".join([
-                            "[{1}]({0})".format(
-                                sticker.url,
-                                sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
-                                if sticker.id is not None else ""
-                            ) for sticker in cached_message.stickers
-                        ]) + " (삭제됨)", inline=False)
-                        if not image:
-                            for stickers in cached_message.stickers:
-                                if self.attachment_name(stickers.url) == "사진":
-                                    embed.set_image(url=stickers.url)
-                                    break
-                    elif len(after.stickers) > 0 and len(cached_message.stickers) == 0:
-                        embed.add_field(name="스티커", value=", ".join([
-                            "[{1}]({0})".format(
-                                sticker.url,
-                                sticker.name if sticker.name is not None else "스티커" + "({0}}".format(sticker.id)
-                                if sticker.id is not None else ""
-                            ) for sticker in after.stickers
-                        ]) + " (추가됨)", inline=False)
-                        if not image:
-                            for stickers in after.stickers:
-                                if self.attachment_name(stickers) == "사진":
-                                    embed.set_image(url=stickers)
-                                    break
-                embed.add_field(name="보낸 날짜", value="`{0}`".format(cached_message.created_at), inline=True)
-            else:
-                return
+            if [
+                attachment.url for attachment in after.attachments
+            ] != [
+                attachment.url if not isinstance(before, DatabaseMessage)
+                else attachment for attachment in before.attachments
+            ]:
+                if len(after.attachments) > 0 and len(before.attachments) > 0:
+                    embed.add_field(name="파일", value=", ".join([
+                        "[{1}]({0})".format(
+                            attachment.url if isinstance(attachment, discord.Attachment) else attachment,
+                            self.attachment_name(
+                                attachment.filename if isinstance(attachment, discord.Attachment) else attachment
+                            )
+                        ) for attachment in before.attachments
+                    ]) + " ▶ " + ", ".join([
+                        "[{1}]({0})".format(
+                            attachment.url,
+                            self.attachment_name(attachment.url)
+                        ) for attachment in after.attachments
+                    ]), inline=False)
+                    embed_upload_file = after
+                elif len(before.attachments) > 0:
+                    embed.add_field(name="파일", value=", ".join([
+                        "[{1}]({0}) (삭제됨)".format(
+                            attachment.url if isinstance(attachment, discord.Attachment) else attachment,
+                            self.attachment_name(
+                                attachment.filename if isinstance(attachment, discord.Attachment) else attachment
+                            )
+                        ) for attachment in before.attachments
+                    ]), inline=False)
+                    embed_upload_file = before
+                elif len(after.attachments) > 0:
+                    embed.add_field(name="파일", value=", ".join([
+                        "[{1}]({0})".format(
+                            attachment.url,
+                            self.attachment_name(attachment.url)
+                        ) for attachment in after.attachments
+                    ]), inline=False)
+                    embed_upload_file = after
+                else:
+                    raise TypeError("Attachment can't -1")
+                for attachment in getattr(embed_upload_file, "attachments", []):
+                    if self.attachment_name(
+                            attachment if isinstance(embed_upload_file, DatabaseMessage) else attachment.url
+                    ) == "사진":
+                        embed.set_image(
+                            url=attachment if isinstance(embed_upload_file, DatabaseMessage) else attachment.url
+                        )
+                        image = True
+                        break
+            if after.stickers != before.stickers:
+                if len(after.stickers) > 0 and len(before.stickers) > 0:
+                    embed.add_field(name="스티커", value=", ".join([
+                        "[{1}]({0})".format(
+                            stickers.name,
+                            self.attachment_name(stickers.url)
+                        ) for stickers in before.stickers
+                    ]) + " ▶ " + ", ".join([
+                        "[{1}]({0})".format(
+                            stickers.name,
+                            self.attachment_name(stickers.url)
+                        ) for stickers in after.stickers
+                    ]), inline=False)
+                    embed_upload_file = after
+                elif len(before.stickers) > 0:
+                    embed.add_field(name="스티커", value=", ".join([
+                        "[{1}]({0}) (삭제됨)".format(
+                            stickers.name,
+                            self.attachment_name(stickers.url)
+                        ) for stickers in before.stickers
+                    ]), inline=False)
+                    embed_upload_file = before
+                elif len(after.stickers) > 0:
+                    embed.add_field(name="스티커", value=", ".join([
+                        "[{1}]({0})".format(
+                            stickers.name,
+                            self.attachment_name(stickers.url)
+                        ) for stickers in after.stickers
+                    ]), inline=False)
+                    embed_upload_file = after
+                else:
+                    raise TypeError("stickers can't -1")
+                if not image:
+                    for stickers in getattr(embed_upload_file, "stickers", []):
+                        if self.attachment_name(stickers.url) == "사진":
+                            embed.set_image(url=stickers.url)
+                            break
+            embed.add_field(
+                name="보낸 날짜", value="`{0}`".format(before.created_at.strftime("%Y-%m-%d %H:%M:%S")), inline=True
+            )
             if after.edited_at is not None:
                 embed.add_field(
-                    name="수정 날짜",
-                    value="`{0}`".format(after.edited_at.strftime("%Y-%m-%d %H:%M:%S")),
-                    inline=True
+                    name="수정 날짜", value="`{0}`".format(after.edited_at.strftime("%Y-%m-%d %H:%M:%S")), inline=True
                 )
-            embed.timestamp = datetime.now(tz=timezone("UTC"))
-            channel = MessageSendable(state=getattr(self.bot, "_connection"), channel=log_activation.message_log_channel)
+            channel = MessageSendable(
+                state=getattr(self.bot, "_connection"), channel=log_activation.message_log_channel
+            )
             await channel.send(embed=embed)
         return
 
@@ -379,7 +289,53 @@ class LoggingReceive(commands.Cog):
             else:
                 return
             embed.timestamp = datetime.now(tz=timezone("UTC"))
-            channel = MessageSendable(state=getattr(self.bot, "_connection"), channel=log_activation.message_log_channel)
+            channel = MessageSendable(
+                state=getattr(self.bot, "_connection"),
+                channel=log_activation.message_log_channel
+            )
+            await channel.send(embed=embed)
+        return
+
+    @commands.Cog.listener()
+    async def on_logging_message_delete_bulk(self, message: Optional[list], raw: MessageDelete):
+        database = Database(bot=self.bot, guild=raw.guild)
+        if not database.get_activation("logging"):
+            return
+        log_activation = database.get_data(table="logging")
+        if not log_activation.MESSAGE_DELETE or not log_activation.MESSAGE:
+            return
+
+        state: ConnectionState = getattr(self.bot, "_connection")
+
+        if log_activation.message_log_channel_id is not None:
+            popping = 0
+            for index, _message in enumerate(message[:]):
+                if isinstance(_message, int):
+                    cached_message: Optional[discord.Message] = getattr(state, "_get_message")(_message)
+                    if cached_message is not None:
+                        message[index - popping] = cached_message
+                    elif cached_message is None:
+                        message.pop(index - popping)
+                        popping += 1
+            embed = copy.deepcopy(self.embed)
+            embed.title = embed.title.format("메시지 대량 삭제")
+            authors = {}
+            for _message in message:
+                if _message.author.id not in authors:
+                    authors[_message.author.id] = [_message.author, 0]
+                authors[_message.author.id][1] += 1
+            embed.add_field(
+                name="사용자", value="\n".join("* {0}#{1}({2}): {3}개".format(
+                    authors[author][0].name, authors[author][0].discriminator, author, authors[author][1]
+                ) for author in authors.keys()),
+                inline=False
+            )
+
+            embed.timestamp = datetime.now(tz=timezone("UTC"))
+            channel = MessageSendable(
+                state=getattr(self.bot, "_connection"),
+                channel=log_activation.message_log_channel
+            )
             await channel.send(embed=embed)
         return
 

@@ -114,6 +114,21 @@ class StatisticsReceive(commands.Cog):
         database.delete_message(message_id=message.id, channel_id=message.channel.id)
         return
 
+    @commands.Cog.listener()
+    async def on_interaction_message_delete_bulk(self, message: MessageDelete):
+        database = Database(bot=self.bot, guild=message.guild)
+        if not database.get_activation("statistics"):
+            self.bot.dispatch("logging_message_delete_bulk", message=[], raw=message)
+            return
+        cached_message = database.get_messages(message_id=message.id, channel_id=message.channel.id)
+        cached_ids = [int(_message.id) for _message in cached_message]
+        for index, _message in enumerate(message.id):
+            if int(_message) not in cached_ids:
+                cached_message.insert(index, int(_message))
+        self.bot.dispatch("logging_message_delete_bulk", message=cached_message, raw=message)
+        database.delete_messages(message_id=message.id, channel_id=message.channel.id)
+        return
+
 
 def setup(client):
     client.add_cog(StatisticsReceive(client))

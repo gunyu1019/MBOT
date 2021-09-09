@@ -185,8 +185,8 @@ class Message(discord.Message):
 
 
 class MessageDelete:
-    def __init__(self, data: dict, state: ConnectionState):
-        self.id = data["id"]
+    def __init__(self, data: dict, state: ConnectionState, bulk: bool = False):
+        self.id = data["id"] if not bulk else data["ids"]
         self.channel_id = int(data["channel_id"])
         self.guild_id = int(data.get("guild_id"))
 
@@ -344,7 +344,7 @@ class MessageEdited(MessageSendable):
     def _handler_author(self) -> Union[discord.Member, discord.User]:
         author = self._state.store_user(self._data.get("author"))
         if isinstance(self.guild, discord.Guild):
-            found = self.guild.get_member(self.author.id)
+            found = self.guild.get_member(author.id)
             if found is not None:
                 author = found
         return author
@@ -366,7 +366,6 @@ class MessageEdited(MessageSendable):
                     role_mentions.append(role)
         return role_mentions
 
-    @property
     def _handler_jump_url(self) -> str:
         guild_id = getattr(self.guild, 'id', '@me')
         return f'https://discord.com/channels/{guild_id}/{self.channel.id}/{self.id}'

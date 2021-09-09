@@ -14,9 +14,8 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with PUBG BOT.  If not, see <http://www.gnu.org/licenses/>.
+along with PUBG BOT.  If not, see <https://www.gnu.org/licenses/>.
 """
-import discord
 import pymysql
 import logging
 from config.config import parser
@@ -66,7 +65,6 @@ class Database:
             connect = get_database()
         else:
             connect = connection
-        connect = get_database()
         cur = connect.cursor(pymysql.cursors.DictCursor)
         sql_command = pymysql.escape_string(f"insert into {table}(id) value (%s)")
         cur.execute(sql_command, self.guild.id)
@@ -156,6 +154,18 @@ class Database:
         connect.close()
         return models.DatabaseMessage(bot=self.bot, data=result, guild=self.guild) if result is not None else None
 
+    def get_messages(self, message_id: list, channel_id: int):
+        connect = get_database()
+        cur = connect.cursor(pymysql.cursors.DictCursor)
+        sql_command = pymysql.escape_string("select * from message where id in %s and channel_id=%s")
+        cur.execute(sql_command, (tuple(message_id), channel_id))
+        result = cur.fetchall()
+        connect.close()
+        return [
+            models.DatabaseMessage(bot=self.bot, data=_result, guild=self.guild)
+            for _result in (result if result is not None else [])
+        ]
+
     def set_message(self, data: dict, message_id: int, channel_id: int):
         setup = [name for name in data.keys()]
         args = []
@@ -185,6 +195,15 @@ class Database:
         cur = connect.cursor(pymysql.cursors.DictCursor)
         sql_command = pymysql.escape_string("delete from message where id=%s and channel_id=%s")
         cur.execute(sql_command, (message_id, channel_id))
+        connect.commit()
+        connect.close()
+
+    @staticmethod
+    def delete_messages(message_id: list, channel_id: int):
+        connect = get_database()
+        cur = connect.cursor(pymysql.cursors.DictCursor)
+        sql_command = pymysql.escape_string("delete from message where id in %s and channel_id=%s")
+        cur.execute(sql_command, (tuple(message_id), channel_id))
         connect.commit()
         connect.close()
 
