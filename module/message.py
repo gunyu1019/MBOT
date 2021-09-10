@@ -311,7 +311,7 @@ class MessageEdited(MessageSendable):
         ]
 
     def _handler_embed(self) -> List[discord.Embed]:
-        return [discord.Embed.from_dict(a) for a in self._data['embeds']]
+        return [discord.Embed.from_dict(a) for a in self._data.get('embeds', [])]
 
     def _handler_attachments(self) -> List[discord.Attachment]:
         return [
