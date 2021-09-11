@@ -28,7 +28,7 @@ from discord.state import ConnectionState
 from typing import Union, List, Dict
 
 from config.config import parser
-from module.interaction import SlashContext, ComponentsContext
+from module.interaction import ApplicationContext, ComponentsContext
 from module.message import Message, MessageCommand, MessageDelete, MessageEdited
 from module.commands import Command
 from process.discord_exception import inspection
@@ -56,14 +56,14 @@ class SocketReceive(commands.Cog):
                     self.func.append({"class": _class, "func": attr})
 
     @staticmethod
-    def check_interaction(ctx: Union[SlashContext, Message], func: Command):
-        if isinstance(ctx, SlashContext):
+    def check_interaction(ctx: Union[ApplicationContext, Message], func: Command):
+        if isinstance(ctx, ApplicationContext):
             return func.interaction
         elif isinstance(ctx, Message):
             return func.message
 
     @commands.Cog.listener()
-    async def on_interaction_command(self, ctx: Union[SlashContext, Message]):
+    async def on_interaction_command(self, ctx: Union[ApplicationContext, Message]):
         if isinstance(ctx, Message):
             prefixes = get_prefix(self.bot, ctx)
             name = ""
@@ -125,7 +125,7 @@ class SocketReceive(commands.Cog):
         state: ConnectionState = getattr(self.bot, "_connection")
         if t == "INTERACTION_CREATE":
             if data.get("type") == 2:
-                result = SlashContext(data, self.bot)
+                result = ApplicationContext(data, self.bot)
                 state.dispatch('interaction_command', result)
             elif data.get("type") == 3:
                 result = ComponentsContext(data, self.bot)

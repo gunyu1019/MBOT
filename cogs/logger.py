@@ -180,11 +180,11 @@ class LoggingReceive(commands.Cog):
                             embed.set_image(url=stickers.url)
                             break
             embed.add_field(
-                name="보낸 날짜", value="`{0}`".format(before.created_at.strftime("%Y-%m-%d %H:%M:%S")), inline=True
+                name="보낸 날짜", value="<t:{0}:R>".format(int(before.created_at.timestamp()) + 32400), inline=True
             )
             if after.edited_at is not None:
                 embed.add_field(
-                    name="수정 날짜", value="`{0}`".format(after.edited_at.strftime("%Y-%m-%d %H:%M:%S")), inline=True
+                    name="수정 날짜", value="<t:{0}:R>".format(int(after.edited_at.timestamp())), inline=True
                 )
             channel = MessageSendable(
                 state=getattr(self.bot, "_connection"), channel=log_activation.message_log_channel
@@ -244,9 +244,13 @@ class LoggingReceive(commands.Cog):
                             if self.attachment_name(sticker.url) == "사진":
                                 embed.set_image(url=sticker.url)
                                 break
-                embed.add_field(name="보낸 날짜", value="`{0}`".format(message.created_at), inline=True)
+                embed.add_field(
+                    name="보낸 날짜", value="<t:{0}:R>".format(int(message.created_at.timestamp()) + 32400), inline=True
+                )
                 if message.edited_at is not None:
-                    embed.add_field(name="수정 날짜", value="`{0}`".format(message.edited_at), inline=True)
+                    embed.add_field(
+                        name="수정 날짜", value="<t:{0}:R>".format(int(message.edited_at.timestamp())), inline=True
+                    )
             elif cached_message is not None:
                 if cached_message.author.bot:
                     return
@@ -283,9 +287,13 @@ class LoggingReceive(commands.Cog):
                             if self.attachment_name(sticker.url) == "사진":
                                 embed.set_image(url=sticker.url)
                                 break
-                embed.add_field(name="보낸 날짜", value="`{0}`".format(cached_message.created_at), inline=True)
-                if message.edited_at is not None:
-                    embed.add_field(name="수정 날짜", value="`{0}`".format(cached_message.edited_at), inline=True)
+                embed.add_field(
+                    name="보낸 날짜", value="<t:{0}:R>".format(int(cached_message.created_at.timestamp()) + 32400), inline=True
+                )
+                if cached_message.edited_at is not None:
+                    embed.add_field(
+                        name="수정 날짜", value="<t:{0}:R>".format(int(cached_message.edited_at.timestamp())), inline=True
+                    )
             else:
                 return
             embed.timestamp = datetime.now(tz=timezone("UTC"))
@@ -320,7 +328,14 @@ class LoggingReceive(commands.Cog):
             embed = copy.deepcopy(self.embed)
             embed.title = embed.title.format("메시지 대량 삭제")
             authors = {}
+            min_timestamp = datetime.now().timestamp()
+            max_timestamp = 0
             for _message in message:
+                timestamp = int(_message.created_at.timestamp()) + 32400
+                if min_timestamp > timestamp:
+                    min_timestamp = timestamp
+                if max_timestamp < timestamp:
+                    max_timestamp = timestamp
                 if _message.author.id not in authors:
                     authors[_message.author.id] = [_message.author, 0]
                 authors[_message.author.id][1] += 1
@@ -328,6 +343,12 @@ class LoggingReceive(commands.Cog):
                 name="사용자", value="\n".join("* {0}#{1}({2}): {3}개".format(
                     authors[author][0].name, authors[author][0].discriminator, author, authors[author][1]
                 ) for author in authors.keys()),
+                inline=False
+            )
+            embed.add_field(
+                name="보낸 시간",
+                value=("<t:{0}> - <t:{1}>".format(min_timestamp, max_timestamp)) if min_timestamp != max_timestamp
+                else ("<t:{0}>".format(min_timestamp)),
                 inline=False
             )
 

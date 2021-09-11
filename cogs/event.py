@@ -26,7 +26,7 @@ from discord.ext import commands
 from typing import Union
 
 from config.config import parser
-from module.interaction import SlashContext, Message
+from module.interaction import ApplicationContext, Message
 from utils.database import Database
 from utils.prefix import set_prefix
 from utils import token
@@ -91,7 +91,7 @@ class Events(commands.Cog):
         return
 
     @commands.Cog.listener()
-    async def on_command(self, ctx: Union[SlashContext, Message]):
+    async def on_command(self, ctx: Union[ApplicationContext, Message]):
         # if ctx.guild is not None:
         #     logger_command.info(f"({ctx.guild} | {ctx.channel} | {ctx.author}) {ctx.content}")
         # else:

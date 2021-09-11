@@ -22,7 +22,7 @@ from typing import Union
 
 from config.config import parser
 from module import commands as _command
-from module.interaction import SlashContext
+from module.interaction import ApplicationContext
 from module.components import ActionRow
 from module.message import MessageSendable, MessageCommand
 from utils.convert import Convert
@@ -37,10 +37,10 @@ class Command:
         self.warning_color = int(parser.get("Color", "warning"), 16)
 
     @_command.command(name="티켓", permission=1, interaction=False)
-    async def ticket(self, ctx: Union[SlashContext, MessageCommand]):
+    async def ticket(self, ctx: Union[ApplicationContext, MessageCommand]):
         option1 = None
         print(ctx.options)
-        if isinstance(ctx, SlashContext):
+        if isinstance(ctx, ApplicationContext):
             option1 = ctx.options.get("종류")
         elif isinstance(ctx, MessageCommand) and len(ctx.options) > 0:
             option1 = ctx.options[0]

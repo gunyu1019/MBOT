@@ -67,7 +67,11 @@ class InteractionContext:
         self.deferred = False
         self.responded = False
 
-        self._interaction_data = InteractionData(interaction_token=self.token, interaction_id=self.id, application_id=self.application)
+        self._interaction_data = InteractionData(
+            interaction_token=self.token,
+            interaction_id=self.id,
+            application_id=self.application
+        )
         self.http = HttpClient(http=self.client.http)
 
     @property
@@ -238,12 +242,14 @@ class InteractionContext:
         return
 
 
-class SlashContext(InteractionContext):
+class ApplicationContext(InteractionContext):
     def __init__(self, payload: dict, client: discord.Client):
         super().__init__(payload, client)
         self.type = payload.get("type", 2)
         data = payload.get("data", {})
 
+        self.application_type = data.get("type")
+        self.target_id = data.get("target_id")
         self.name = data.get("name")
         self.options = {}
         for option in data.get("options", []):
@@ -269,11 +275,29 @@ class SlashContext(InteractionContext):
                 self.options[key]: float = float(value)
             else:
                 self.options[key] = value
+        self._resolved = data.get("resolved", {})
 
     @property
     def content(self):
         options = [str(self.options[i]) for i in self.options.keys()]
         return f"/{self.name} {' '.join(options)}"
+
+    def target(self, target_type, target_id: int = None):
+        if target_id is None:
+            target_id = self.target_id
+
+        if target_type == "message" and "messages" in self._resolved:
+            resolved = self._resolved.get("messages", {})
+            data = Message(state=self._state, channel=self.channel, data=resolved.get(target_id))
+            return data
+        elif target_type == "members" and "members" in self._resolved and self.guild_id is not None:
+            resolved = self._resolved.get("members", {})
+            data = discord.Member(data=resolved.get(target_id), state=self._state, guild=self.guild)
+            return data
+        elif target_type == "users" and "users" in self._resolved:
+            resolved = self._resolved.get("users", {})
+            data = discord.User(data=resolved.get(target_id), state=self._state)
+            return data
 
 
 class ComponentsContext(InteractionContext):
