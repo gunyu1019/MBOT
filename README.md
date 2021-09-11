@@ -47,3 +47,13 @@ MBOT의 기능이 생각보다 다양하게 구성된 관게로 아래에 작업
 * [ ] Top-Level Message (번외)
 * [ ] Reaction Role Grant (2단계)
 * [ ] Custom Plugins (번외)
+
+### Metarix Web Dashboard
+**같이 개발하실 개발자 구해요~**
+* [ ] Logging
+* [ ] Statistics
+* [ ] Authorize
+* [ ] Ticked
+* [ ] Welcome Message
+* [ ] Reaction Role Grant
+* [ ] Others
