@@ -82,7 +82,9 @@ class StatisticsReceive(commands.Cog):
         if message.content is not None:
             data['content'] = message.content
         if message.embeds is not None:
-            data['embeds'] = self.to_json([embed.to_dict() for embed in message.embeds])
+            data['embeds'] = self.to_json([
+                embed.to_dict() if isinstance(embed, discord.Embed) else embed for embed in message.embeds
+            ])
         if message.attachments is not None:
             data['attachment'] = self.to_json([attachment.url for attachment in message.attachments])
         if message.pinned is not None:

@@ -60,6 +60,7 @@ class LoggingReceive(commands.Cog):
             return
 
         state: ConnectionState = getattr(self.bot, "_connection")
+        sendable = False
 
         if log_activation.message_log_channel_id is not None:
             cached_message: Optional[discord.Message] = getattr(state, "_get_message")(after.id)
@@ -74,8 +75,10 @@ class LoggingReceive(commands.Cog):
                 return
             embed.title = embed.title.format("메시지 수정")
             if before.content != "" and before.content is not None:
+                sendable = True
                 embed.add_field(name="변경 전 내용", value="{0}".format(before.content), inline=True)
             if after.content != "" and after.content is not None:
+                sendable = True
                 embed.add_field(name="변경 후 내용", value="{0}".format(after.content), inline=True)
             embed.add_field(name="메시지 위치", value="[링크]({0})".format(after.jump_url), inline=True)
             if isinstance(before, discord.Message):
@@ -98,6 +101,7 @@ class LoggingReceive(commands.Cog):
                 attachment.url if not isinstance(before, DatabaseMessage)
                 else attachment for attachment in before.attachments
             ]:
+                sendable = True
                 if len(after.attachments) > 0 and len(before.attachments) > 0:
                     embed.add_field(name="파일", value=", ".join([
                         "[{1}]({0})".format(
@@ -143,6 +147,7 @@ class LoggingReceive(commands.Cog):
                         image = True
                         break
             if after.stickers != before.stickers:
+                sendable = True
                 if len(after.stickers) > 0 and len(before.stickers) > 0:
                     embed.add_field(name="스티커", value=", ".join([
                         "[{1}]({0})".format(
@@ -186,10 +191,11 @@ class LoggingReceive(commands.Cog):
                 embed.add_field(
                     name="수정 날짜", value="<t:{0}:R>".format(int(after.edited_at.timestamp())), inline=True
                 )
-            channel = MessageSendable(
-                state=getattr(self.bot, "_connection"), channel=log_activation.message_log_channel
-            )
-            await channel.send(embed=embed)
+            if sendable:
+                channel = MessageSendable(
+                    state=getattr(self.bot, "_connection"), channel=log_activation.message_log_channel
+                )
+                await channel.send(embed=embed)
         return
 
     @commands.Cog.listener()
