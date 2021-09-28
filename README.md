@@ -45,6 +45,7 @@ MBOT의 기능이 생각보다 다양하게 구성된 관게로 아래에 작업
   * [x] Private/Public Thread Ticket  
 * [ ] Custom Task Service (번외) ‡
 * [ ] Top-Level Message (번외)
+* [ ] Invite Logger (번외)
 * [ ] Reaction Role Grant (2단계)
 * [ ] Custom Plugins (번외)
 

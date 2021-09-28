@@ -7,6 +7,7 @@ from discord.ext import commands
 from typing import Union, List
 
 from config.config import parser
+from module.components import ActionRow, Button
 from module.interaction import ComponentsContext, InteractionContext
 from module.message import Message, MessageSendable
 from utils.convert import Convert
@@ -242,23 +243,33 @@ class TicketReceive(commands.Cog):
         if data.comment is not None and data.comment != {}:
             if data.mode == 0 or data.mode == 2 or data.mode == 3:
                 _channel = MessageSendable(state=getattr(self.bot, "_connection"), channel=data.channel)
-                await _channel.send(
-                    content=convert.convert_content(
-                        data.comment.get("content")
-                    ),
-                    embed=convert.convert_embed(
-                        data.comment.get("embed", {})
-                    )
-                )
             elif data.mode == 1:
-                await context.author.send(
-                    content=convert.convert_content(
-                        data.comment.get("content")
-                    ),
-                    embed=convert.convert_embed(
-                        data.comment.get("embed", {})
-                    )
-                )
+                channel = context.author.dm_channel
+                if channel is None:
+                    channel = await context.author.create_dm()
+                _channel = MessageSendable(state=getattr(self.bot, "_connection"), channel=channel)
+            await context.author.send(
+                content=convert.convert_content(
+                    data.comment.get("content")
+                ),
+                embed=convert.convert_embed(
+                    data.comment.get("embed", {})
+                ),
+                components=[ActionRow(
+                    components=[
+                        convert.convert_button(
+                            custom_id="open_ticket",
+                            data=data.message.get("button", {
+                                "label": "티켓 닫기",
+                                "style": 1
+                            }),
+                            emoji={
+                                "name": "\U0000274C"
+                            }
+                        )
+                    ]
+                )]
+            )
         self.ticket_process.description = self.ticket_process.description.format(ticket_channel=channel.mention)
         await context.send(embed=self.ticket_process, hidden=True)
         with open(os.path.join(directory, "data", "ticket.json"), "w", encoding='utf-8') as file:
