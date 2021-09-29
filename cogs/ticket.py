@@ -248,7 +248,7 @@ class TicketReceive(commands.Cog):
                 if channel is None:
                     channel = await context.author.create_dm()
                 _channel = MessageSendable(state=getattr(self.bot, "_connection"), channel=channel)
-            await context.author.send(
+            await _channel.send(
                 content=convert.convert_content(
                     data.comment.get("content")
                 ),
@@ -258,7 +258,7 @@ class TicketReceive(commands.Cog):
                 components=[ActionRow(
                     components=[
                         convert.convert_button(
-                            custom_id="open_ticket",
+                            custom_id="close_ticket",
                             data=data.message.get("button", {
                                 "label": "티켓 닫기",
                                 "style": 1
