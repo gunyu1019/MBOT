@@ -223,6 +223,14 @@ class MessageCommand(Message):
         else:
             self.options = []
 
+        self.command_prefix = None
+
+    @property
+    def prefix(self):
+        if self.command_prefix is None:
+            super().prefix()
+        return self.command_prefix
+
 
 class MessageSendable:
     def __init__(self, state: ConnectionState, channel):

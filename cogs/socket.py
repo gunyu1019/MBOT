@@ -21,6 +21,7 @@ import discord
 import logging
 import inspect
 import importlib
+import importlib.util
 import os
 
 from discord.ext import commands
@@ -33,7 +34,6 @@ from module.message import Message, MessageCommand, MessageDelete, MessageEdited
 from module.commands import Command
 from process.discord_exception import inspection
 from utils.directory import directory
-from utils.prefix import get_prefix
 from utils.perm import permission
 
 logger = logging.getLogger(__name__)
@@ -45,15 +45,45 @@ class SocketReceive(commands.Cog):
         self.bot = bot
 
         self.func: List[Dict[str, Command]] = []
+        self.commands: Dict[str, Dict[str, Command]] = {}
         cogs = [
             "commands." + file[:-3] for file in os.listdir(os.path.join(directory, "commands")) if file.endswith(".py")
         ]
+
         for cog in cogs:
-            module = importlib.import_module(cog)
-            _class = module.setup(self.bot)
-            for func, attr in inspect.getmembers(_class):
+            spec = importlib.util.find_spec(cog)
+            if spec is None:
+                raise discord.ext.commands.errors.ExtensionNotFound(cog)
+
+            lib = importlib.util.module_from_spec(spec)
+            try:
+                spec.loader.exec_module(lib)  # type: ignore
+            except Exception as e:
+                raise discord.ext.commands.errors.ExtensionFailed(cog, e) from e
+
+            try:
+                _setup = getattr(lib, 'setup')
+            except AttributeError:
+                raise discord.ext.commands.errors.NoEntryPointError(cog)
+
+            try:
+                _cog = _setup(self.bot)
+            except Exception as e:
+                raise discord.ext.commands.errors.ExtensionFailed(cog, e) from e
+
+            for func, attr in inspect.getmembers(_cog):
                 if isinstance(attr, Command):
-                    self.func.append({"class": _class, "func": attr})
+                    self.commands[attr.name] = {
+                        "class": _cog,
+                        "function": attr
+                    }
+                    if len(attr.aliases) != 0:
+                        for alias in attr.aliases:
+                            self.commands[alias] = {
+                                "class": _cog,
+                                "function": attr
+                            }
+
 
     @staticmethod
     def check_interaction(ctx: Union[ApplicationContext, Message], func: Command):
@@ -62,43 +92,69 @@ class SocketReceive(commands.Cog):
         elif isinstance(ctx, Message):
             return func.message
 
-    @commands.Cog.listener()
-    async def on_interaction_command(self, ctx: Union[ApplicationContext, Message]):
-        if isinstance(ctx, Message):
-            prefixes = get_prefix(self.bot, ctx)
-            name = ""
-            for prefix in prefixes:
-                prefix_length = len(prefix)
-                cc = ctx.content[prefix_length:]
-                prefix_cc = ctx.content[0:prefix_length]
-                if prefix_cc == prefix:
-                    name = cc.split()
-                    break
-            if len(name) >= 1:
-                ctx.name = name[0]
-            elif len(name) < 1:
-                return
+    async def get_prefix(self, ctx) -> List[str]:
+        prefix = ret = self.bot.command_prefix
+        if callable(prefix):
+            ret = await discord.utils.maybe_coroutine(prefix, self, ctx)
 
-        name = ctx.name
+        if not isinstance(ret, str):
+            try:
+                ret = list(ret)
+            except TypeError:
+                raise TypeError("command_prefix must be plain string, iterable of strings, or callable "
+                                f"returning either of these, not {ret.__class__.__name__}")
+
+            if not ret:
+                raise ValueError("Iterable command_prefix must contain at least one prefix")
+
+        return ret
+
+    @commands.Cog.listener()
+    async def on_interaction_command(self, ctx: Union[ApplicationContext, MessageCommand]):
+        if isinstance(ctx, MessageCommand):
+            prefixes = await self.get_prefix(ctx)
+            if isinstance(prefixes, list):
+                if not ctx.content.startswith(tuple(prefixes)):
+                    return
+
+                find_prefix = None
+                for prefix in prefixes:
+                    prefix_len = len(prefix)
+                    if ctx.content[0:prefix_len] == prefix:
+                        find_prefix = prefix
+                        break
+                if find_prefix is None:
+                    raise
+
+                ctx.command_prefix = find_prefix
+                ctx.name = ctx.content[len(find_prefix):]
+            elif isinstance(prefixes, str):
+                if not ctx.content.startswith(prefixes):
+                    return
+                prefix_len = len(prefixes)
+                ctx.command_prefix = ctx.content[0:prefix_len]
+                ctx.name = ctx.content[prefix_len:]
 
         _state: ConnectionState = getattr(self.bot, "_connection")
-        for func in self.func:
-            _function = func.get("func")
-            if (_function.name == name or name in _function.aliases) and self.check_interaction(ctx, _function):
-                _state.dispatch("command", ctx)
-                if permission(_function.permission)(ctx):
-                    if parser.getboolean("Inspection", "inspection") and not permission(1)(ctx):
-                        await inspection(ctx)
-                        return
-                    try:
-                        await _function.callback(func.get("class"), ctx)
-                    except Exception as error:
-                        _state.dispatch("command_exception", ctx, error)
-                    else:
-                        _state.dispatch("command_complete", ctx)
+        command = self.commands.get(ctx.name)
+        if command is None:
+            return
+
+        _function = command.get("function")
+        if (_function.name == ctx.name or ctx.name in _function.aliases) and self.check_interaction(ctx, _function):
+            _state.dispatch("command", ctx)
+            if permission(_function.permission)(ctx):
+                if parser.getboolean("Inspection", "inspection") and not permission(1)(ctx):
+                    await inspection(ctx)
+                    return
+                try:
+                    await _function.callback(command.get("class"), ctx)
+                except Exception as error:
+                    _state.dispatch("command_exception", ctx, error)
                 else:
-                    _state.dispatch("command_permission_error", ctx)
-                break
+                    _state.dispatch("command_complete", ctx)
+            else:
+                _state.dispatch("command_permission_error", ctx)
         return
 
     @commands.Cog.listener()

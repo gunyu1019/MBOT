@@ -37,7 +37,7 @@ class Command:
 
     @commands.command(aliases=['핑'], permission=4)
     async def ping(self, ctx):
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
         if now > ctx.created_at:
             response_ping_r = now - ctx.created_at
         else:
@@ -49,7 +49,7 @@ class Command:
             description=f"클라이언트 핑상태: {first_latency}ms\n응답속도(읽기): {round(response_ping_read * 1000, 2)}ms",
             color=self.color)
         msg = await ctx.send(embed=embed)
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
         if now > msg.created_at:
             response_ping_w = now - msg.created_at
         else:
