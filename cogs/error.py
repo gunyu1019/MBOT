@@ -36,7 +36,7 @@ class Error(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_exception(self, ctx, error):
-        excname = str(type(error))
+        excname = type(error)
         excarglist = [str(x) for x in error.args]
 
         if not excarglist:

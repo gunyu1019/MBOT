@@ -96,7 +96,7 @@ class AuthorizedReceived(commands.Cog):
             if not refresh:
                 file = await client.get_image()
             else:
-                file = await client.refresh_sound()
+                file = await client.refresh_image()
             tp = "jpeg"
             self.robot_process.set_image(url="attachment://Authorized-File.jpeg")
         elif mode.value == 1:
@@ -154,7 +154,7 @@ class AuthorizedReceived(commands.Cog):
         else:
             try:
                 def check1(component: ComponentsContext):
-                    return component.author.id == member.id and \
+                        return component.author.id == member.id and \
                            (component.message.id or component.message.webhook_id) == msg.id
                 result: ComponentsContext = await self.bot.wait_for("components", check=check1, timeout=300)
             except asyncio.TimeoutError:
